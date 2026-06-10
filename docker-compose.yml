@@ -1,0 +1,106 @@
+# =============================================================================
+# Docker Compose — Développement local
+# Services : Flask app + PostgreSQL + Redis + Celery worker + MailHog
+# =============================================================================
+
+version: "3.9"
+
+services:
+
+  # ── Application Flask ──────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: builder            # Stage builder en dev (hot reload)
+    command: >
+      flask --app wsgi:application run
+      --host 0.0.0.0 --port 5000 --debug --reload
+    volumes:
+      - .:/app                   # Montage du code source
+      - ./storage:/app/storage
+    ports:
+      - "5000:5000"
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg2://rh_user:rh_pass@db:5432/hr_platform_dev
+      REDIS_URL: redis://redis:6379/0
+      MAIL_SERVER: mailhog
+      MAIL_PORT: 1025
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Worker Celery ─────────────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: builder
+    command: celery -A wsgi.celery worker --loglevel=info --concurrency=4
+    volumes:
+      - .:/app
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg2://rh_user:rh_pass@db:5432/hr_platform_dev
+      REDIS_URL: redis://redis:6379/0
+    env_file: .env
+    depends_on:
+      - db
+      - redis
+
+  # ── Celery Beat (scheduler) ───────────────────────────────────────────
+  beat:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: builder
+    command: celery -A wsgi.celery beat --loglevel=info
+    volumes:
+      - .:/app
+    env_file: .env
+    depends_on:
+      - redis
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER:     rh_user
+      POSTGRES_PASSWORD: rh_pass
+      POSTGRES_DB:       hr_platform_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sh:/docker-entrypoint-initdb.d/init_db.sh
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rh_user -d hr_platform_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ─────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # ── MailHog (capture emails en dev) ──────────────────────────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "8025:8025"   # Interface web
+      - "1025:1025"   # Serveur SMTP
+
+volumes:
+  postgres_data:

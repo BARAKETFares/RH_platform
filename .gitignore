@@ -1,0 +1,53 @@
+# ── Python ────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+*.whl
+
+# ── Environnement virtuel ─────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Secrets & Configuration ───────────────────────────────────────────────
+.env
+.env.local
+.env.production
+*.pem
+*.key
+
+# ── Base de données locale ────────────────────────────────────────────────
+*.sqlite3
+*.db
+
+# ── Logs ──────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Storage (uploads, bulletins PDF) ─────────────────────────────────────
+storage/
+
+# ── Tests ─────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ── Outils ────────────────────────────────────────────────────────────────
+.mypy_cache/
+.ruff_cache/
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# ── Docker ────────────────────────────────────────────────────────────────
+docker-compose.override.yml

@@ -1,0 +1,82 @@
+/*
+ * Plateforme RH — Styles personnalisés
+ * Complète Bootstrap 5 sans le surcharger.
+ * Variables CSS synchronisées avec les couleurs Bootstrap.
+ */
+
+/* ── Variables ─────────────────────────────────────────────────────────── */
+:root {
+  --hr-sidebar-width:   240px;
+  --hr-navbar-height:   56px;
+  --hr-card-radius:     0.5rem;
+  --hr-transition:      0.2s ease-in-out;
+}
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+#sidebar {
+  position: sticky;
+  top: var(--hr-navbar-height);
+  height: calc(100vh - var(--hr-navbar-height));
+  overflow-y: auto;
+  transition: width var(--hr-transition);
+}
+
+#page-content-wrapper {
+  min-height: calc(100vh - var(--hr-navbar-height));
+  background-color: #f8f9fa;
+}
+
+/* ── Navigation active ──────────────────────────────────────────────────── */
+#sidebar .nav-link.active,
+#sidebar .nav-link:hover {
+  background-color: rgba(13, 110, 253, 0.08);
+  border-radius: 0.375rem;
+  color: var(--bs-primary) !important;
+}
+
+/* ── KPI Cards ──────────────────────────────────────────────────────────── */
+.kpi-card {
+  border: none;
+  border-radius: var(--hr-card-radius);
+  transition: box-shadow var(--hr-transition);
+}
+
+.kpi-card:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+}
+
+.kpi-card .kpi-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ── Avatar initiales ───────────────────────────────────────────────────── */
+.avatar-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* ── Badge statut congés ────────────────────────────────────────────────── */
+.badge-leave-pending_manager  { background-color: #fd7e14; }
+.badge-leave-pending_hr       { background-color: #0dcaf0; color: #000; }
+.badge-leave-approved         { background-color: #198754; }
+.badge-leave-rejected         { background-color: #dc3545; }
+.badge-leave-cancelled        { background-color: #6c757d; }
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+.table-hover tbody tr:hover {
+  background-color: rgba(13, 110, 253, 0.04);
+}
+
+/* ── Charts containers ──────────────────────────────────────────────────── */
+.chart-container {
+  position: relative;
+  min-height: 300px;
+}

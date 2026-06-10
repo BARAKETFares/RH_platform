@@ -1,0 +1,109 @@
+{% extends "base_auth.html" %}
+{% block title %}Connexion{% endblock %}
+
+{% block content %}
+
+<div class="text-center mb-4">
+  <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center
+              justify-content-center mb-3" style="width:56px;height:56px;">
+    <i class="bi bi-person-lock fs-4 text-primary"></i>
+  </div>
+  <h1 class="h4 fw-semibold mb-0">Connexion</h1>
+  <p class="text-muted small mt-1">Accédez à votre espace RH</p>
+</div>
+
+<form method="POST" action="{{ url_for('auth.login_post') }}" novalidate>
+  {{ form.hidden_tag() }}
+
+  {# ── Email ──────────────────────────────────────────────────────── #}
+  <div class="mb-3">
+    {{ form.email.label(class="form-label fw-medium") }}
+    <div class="input-group">
+      <span class="input-group-text bg-light border-end-0">
+        <i class="bi bi-envelope text-muted"></i>
+      </span>
+      {{ form.email(
+          class="form-control border-start-0 ps-0"
+              ~ (" is-invalid" if form.email.errors else ""),
+          id="email"
+      ) }}
+      {% if form.email.errors %}
+        <div class="invalid-feedback">
+          {% for error in form.email.errors %}{{ error }}{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Mot de passe ────────────────────────────────────────────────── #}
+  <div class="mb-3">
+    <div class="d-flex justify-content-between align-items-center">
+      {{ form.password.label(class="form-label fw-medium mb-0") }}
+      <a href="{{ url_for('auth.forgot_password_get') }}"
+         class="small text-decoration-none text-muted">
+        Mot de passe oublié ?
+      </a>
+    </div>
+    <div class="input-group mt-1">
+      <span class="input-group-text bg-light border-end-0">
+        <i class="bi bi-lock text-muted"></i>
+      </span>
+      {{ form.password(
+          class="form-control border-start-0 border-end-0 ps-0"
+              ~ (" is-invalid" if form.password.errors else ""),
+          id="password"
+      ) }}
+      <button class="btn btn-outline-secondary border-start-0"
+              type="button"
+              id="togglePassword"
+              title="Afficher / masquer le mot de passe"
+              aria-label="Afficher ou masquer le mot de passe">
+        <i class="bi bi-eye" id="eyeIcon"></i>
+      </button>
+      {% if form.password.errors %}
+        <div class="invalid-feedback">
+          {% for error in form.password.errors %}{{ error }}{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Rester connecté ─────────────────────────────────────────────── #}
+  <div class="mb-4">
+    <div class="form-check">
+      {{ form.remember_me(class="form-check-input", id="rememberMe") }}
+      {{ form.remember_me.label(class="form-check-label text-muted small",
+                                for="rememberMe") }}
+    </div>
+  </div>
+
+  {# ── Soumettre ───────────────────────────────────────────────────── #}
+  {{ form.submit(
+      class="btn btn-primary w-100 py-2 fw-medium",
+      id="submitBtn"
+  ) }}
+
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  /* Afficher / masquer le mot de passe */
+  document.getElementById('togglePassword').addEventListener('click', function () {
+    const input = document.getElementById('password');
+    const icon  = document.getElementById('eyeIcon');
+    const show  = input.type === 'password';
+    input.type       = show ? 'text' : 'password';
+    icon.className   = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+    this.title       = show ? 'Masquer le mot de passe' : 'Afficher le mot de passe';
+  });
+
+  /* Désactiver le bouton pendant la soumission (évite les doubles clics) */
+  document.querySelector('form').addEventListener('submit', function () {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled   = true;
+    btn.innerHTML  = '<span class="spinner-border spinner-border-sm me-2"></span>Connexion…';
+  });
+</script>
+{% endblock %}
