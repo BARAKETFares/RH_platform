@@ -1,0 +1,27 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary px-3">
+  <a class="navbar-brand fw-bold" href="{{ url_for('reporting.dashboard') }}">
+    <i class="bi bi-people-fill me-2"></i>{{ config.APP_NAME }}
+  </a>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    {# Notifications #}
+    <a href="#" class="text-white position-relative">
+      <i class="bi bi-bell fs-5"></i>
+      {# Le badge sera rendu dynamique via JS #}
+    </a>
+    {# Avatar utilisateur #}
+    <div class="dropdown">
+      <a class="text-white dropdown-toggle text-decoration-none" href="#" data-bs-toggle="dropdown">
+        {{ current_user.employee.first_name | default('Compte') }}
+      </a>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Mon profil</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
+            <i class="bi bi-box-arrow-right me-2"></i>Déconnexion
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>

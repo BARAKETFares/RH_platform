@@ -1,0 +1,15 @@
+{# Affichage des messages flash Flask avec les classes Bootstrap correspondantes #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      {% set bs_class = {
+        'success': 'success', 'error': 'danger',
+        'warning': 'warning', 'info': 'info'
+      }.get(category, 'info') %}
+      <div class="alert alert-{{ bs_class }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}

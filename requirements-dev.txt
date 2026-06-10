@@ -1,0 +1,23 @@
+# Dépendances de développement (inclut les deps de production)
+-r requirements.txt
+
+# ── Tests ──────────────────────────────────────────────────────────────────
+pytest==8.1.0
+pytest-flask==1.3.0
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+factory-boy==3.3.0               # Génération de fixtures
+Faker==23.2.1                    # Données de test réalistes
+
+# ── Qualité de code ────────────────────────────────────────────────────────
+ruff==0.3.0                      # Linter + formateur ultra-rapide
+black==24.2.0                    # Formateur Python
+mypy==1.8.0                      # Vérification de types statique
+SQLAlchemy[mypy]==2.0.27
+
+# ── Debug ─────────────────────────────────────────────────────────────────
+Flask-DebugToolbar==0.14.1
+ipython==8.22.1
+
+# ── Docs API ──────────────────────────────────────────────────────────────
+flask-smorest==0.44.0            # OpenAPI 3.0 auto-généré

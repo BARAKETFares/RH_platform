@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="{{ g.locale | default('fr') }}" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}{% endblock %} — {{ config.APP_NAME }}</title>
+
+  {# Bootstrap 5 CSS #}
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+        crossorigin="anonymous">
+  {# Bootstrap Icons #}
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  {# Custom CSS #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  {# Navbar #}
+  {% include "components/_navbar.html" %}
+
+  <div class="d-flex" id="wrapper">
+    {# Sidebar #}
+    {% include "components/_sidebar.html" %}
+
+    {# Contenu principal #}
+    <main id="page-content-wrapper" class="flex-grow-1 p-4">
+
+      {# Messages flash #}
+      {% include "components/_alerts.html" %}
+
+      {# Breadcrumb #}
+      {% block breadcrumb %}{% endblock %}
+
+      {# Titre de page #}
+      {% if self.page_title() %}
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">{% block page_title %}{% endblock %}</h1>
+        {% block page_actions %}{% endblock %}
+      </div>
+      {% endif %}
+
+      {# Contenu #}
+      {% block content %}{% endblock %}
+
+    </main>
+  </div>
+
+  {# Bootstrap 5 JS #}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+          crossorigin="anonymous"></script>
+  {# Chart.js #}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  {# Custom JS #}
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+
+</body>
+</html>
