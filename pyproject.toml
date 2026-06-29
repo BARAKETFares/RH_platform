@@ -1,0 +1,23 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E501"]
+exclude = ["migrations/", "venv/", ".venv/"]
+
+[tool.ruff.per-file-ignores]
+"app/models/__init__.py" = ["F401"]
+"app/api/v1/__init__.py" = ["F401"]
+"config/__init__.py"     = ["F401"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+exclude = "/migrations|/venv|/\.venv"
+
+[tool.pytest.ini_options]
+testpaths        = ["tests"]
+python_files     = ["test_*.py"]
+python_classes   = ["Test*"]
+python_functions = ["test_*"]
+addopts          = "-v --tb=short"

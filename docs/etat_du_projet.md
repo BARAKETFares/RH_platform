@@ -245,7 +245,35 @@ def _current_company_id() -> int | None:
 
 ---
 
-## 4. État des modules
+## 4. Dette technique identifiée lors du nettoyage MVP (30 juin 2026)
+
+### 4.1 🔴 Ambiguïté config — `config/base.py` est du dead code
+
+**Situation** : Il existe deux `BaseConfig` dans le projet :
+
+- `config/settings.py::BaseConfig` → **source active**, importée par `config/__init__.py` et enregistrée dans `config_registry`
+- `config/base.py::BaseConfig` → **jamais chargée** par l'app. `config/development.py`, `config/production.py` et `config/testing.py` en héritent, mais ces trois fichiers ne sont pas dans `config_registry`
+
+**Impact actuel** : Aucun (la bonne config tourne). Mais la présence de `config/base.py` + ses dérivés crée une confusion sur quelle est la source de vérité.
+
+**À faire avant mise en production** : choisir l'un des deux systèmes et supprimer l'autre. Recommandation : garder `config/settings.py` (qui est la source active) et supprimer `config/base.py`, `config/development.py`, `config/production.py`, `config/testing.py`.
+
+### 4.2 🟠 Tâches Celery planifiées non implémentées
+
+Les tâches suivantes sont référencées dans le BEAT_SCHEDULE de `config/settings.py` mais n'ont pas encore de corps :
+
+| Tâche retirée du schedule | Raison |
+|---|---|
+| `notification_tasks.archive_expired` | Stub supprimé (jamais écrit) |
+| `hr_tasks.send_probation_alerts` | Stub supprimé (jamais écrit) |
+
+Seule `leave_tasks.accrue_monthly_leave` est implémentée et testée (Phase 8 du rapport E2E).
+
+**À implémenter avant production** : les alertes fins de période d'essai et l'archivage des notifications.
+
+---
+
+## 5. État des modules
 
 | Module | Interface web | API REST | Service métier | État |
 |--------|--------------|----------|----------------|------|
