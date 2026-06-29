@@ -114,16 +114,6 @@ class BaseConfig:
             "task":     "app.tasks.leave_tasks.accrue_monthly_leave",
             "schedule": "0 1 1 * *",
         },
-        # Archivage des notifications expirées (chaque nuit à 2h)
-        "archive-expired-notifications": {
-            "task":     "app.tasks.notification_tasks.archive_expired",
-            "schedule": "0 2 * * *",
-        },
-        # Alertes fins de période d'essai (chaque lundi à 8h)
-        "probation-alerts": {
-            "task":     "app.tasks.hr_tasks.send_probation_alerts",
-            "schedule": "0 8 * * 1",
-        },
     }
 
     # ── Email ─────────────────────────────────────────────────────────────────

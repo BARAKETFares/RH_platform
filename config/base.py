@@ -83,20 +83,7 @@ class BaseConfig:
     CELERY_ENABLE_UTC: bool = True
     CELERY_TASK_TRACK_STARTED: bool = True
     CELERY_TASK_TIME_LIMIT: int = 300                    # 5 min max par tâche
-    CELERY_BEAT_SCHEDULE: dict = {
-        "check-contract-expiries-daily": {
-            "task": "app.tasks.notification_tasks.check_contract_expiries",
-            "schedule": 86400,                           # toutes les 24h
-        },
-        "check-probation-endings-daily": {
-            "task": "app.tasks.notification_tasks.check_probation_endings",
-            "schedule": 86400,
-        },
-        "cleanup-expired-sessions-hourly": {
-            "task": "app.tasks.notification_tasks.cleanup_expired_sessions",
-            "schedule": 3600,
-        },
-    }
+    CELERY_BEAT_SCHEDULE: dict = {}
 
     # -------------------------------------------------------------------------
     # Email (Flask-Mail)
