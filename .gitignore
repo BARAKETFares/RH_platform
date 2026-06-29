@@ -28,9 +28,10 @@ ENV/
 *.sqlite3
 *.db
 
-# ── Logs ──────────────────────────────────────────────────────────────────
+# ── Logs & outputs de debug ──────────────────────────────────────────────
 logs/
 *.log
+e2e_output*.txt
 
 # ── Storage (uploads, bulletins PDF) ─────────────────────────────────────
 storage/
