@@ -458,6 +458,7 @@ def phase2(client, accounts: dict) -> dict:
         result["employee_role_id"] = emp_role_id
 
     # NOTE: password_confirm est le nom exact du champ WTForms (pas confirm_password)
+    # follow_redirects=False : action réussie → 302. Forme invalide → 200 (re-render).
     resp = client.post(
         "/admin/users/new",
         data={
@@ -470,16 +471,20 @@ def phase2(client, accounts: dict) -> dict:
             "preferred_language": "fr",
             "employee_id": "0",
         },
-        follow_redirects=True,
+        follow_redirects=False,
     )
+    resp_dest = client.get("/admin/users/", follow_redirects=True)
     with app.app_context():
         from app.models.user import User
         new_user = User.get_by_email(new_email)
-        if new_user:
-            ok("Créer utilisateur via /admin/users/new", f"HTTP {resp.status_code}, uuid={new_user.uuid}")
+        if resp.status_code == 302 and resp_dest.status_code == 200 and new_user:
+            ok("Créer utilisateur via /admin/users/new",
+               f"action=302, dest=200, uuid={new_user.uuid}, compte=admin@test.fr")
             result["new_user_uuid"] = new_user.uuid
         else:
-            fail("Créer utilisateur via /admin/users/new", f"Utilisateur non trouvé en base", "—", f"HTTP {resp.status_code}")
+            fail("Créer utilisateur via /admin/users/new",
+                 f"action={resp.status_code}, dest={resp_dest.status_code}, user_en_base={new_user is not None}",
+                 "—", f"compte=admin@test.fr")
 
     # ── 2.2 Modifier les permissions d'un rôle — diff dans l'audit ───────────
     # Récupérer toutes les données nécessaires AVANT d'appeler client.post()
@@ -508,7 +513,7 @@ def phase2(client, accounts: dict) -> dict:
                 _new_perm_ids = _current_perm_ids + [_new_perm.id]
 
     if _role_id_for_perm and _new_perm_id:
-        # Appel HTTP HORS du contexte applicatif
+        # Appel HTTP HORS du contexte applicatif. follow_redirects=False : 302 = succès.
         resp = client.post(
             f"/admin/roles/{_role_id_for_perm}/edit",
             data={
@@ -516,8 +521,9 @@ def phase2(client, accounts: dict) -> dict:
                 "description": _role_desc,
                 "permission_ids": [str(pid) for pid in _new_perm_ids],
             },
-            follow_redirects=True,
+            follow_redirects=False,
         )
+        resp_dest = client.get("/admin/roles/", follow_redirects=True)
         # Vérification dans un NOUVEAU contexte (pas imbriqué)
         with app.app_context():
             from app.models.audit import AuditLog
@@ -527,14 +533,15 @@ def phase2(client, accounts: dict) -> dict:
                 .order_by(AuditLog.created_at.desc())
                 .limit(1)
             ).scalar_one_or_none()
-            if last_audit and last_audit.extra_data:
+            if resp.status_code == 302 and resp_dest.status_code == 200 and last_audit and last_audit.extra_data:
                 added = last_audit.extra_data.get("added", [])
                 removed = last_audit.extra_data.get("removed", [])
                 ok("Modifier permissions rôle employee + audit diff",
-                   f"HTTP {resp.status_code}, added={added}, removed={removed}")
+                   f"action=302, dest=200, added={added}, removed={removed}")
             else:
                 fail("Modifier permissions rôle — audit diff",
-                     "AuditLog sans diff added/removed", "—", f"HTTP {resp.status_code}")
+                     f"action={resp.status_code}, dest={resp_dest.status_code}, audit={last_audit is not None}",
+                     "—", f"AuditLog sans diff added/removed")
 
         # Remettre les permissions originales — HORS contexte
         client.post(
@@ -544,7 +551,7 @@ def phase2(client, accounts: dict) -> dict:
                 "description": _role_desc,
                 "permission_ids": [str(pid) for pid in _current_perm_ids],
             },
-            follow_redirects=True,
+            follow_redirects=False,
         )
 
     # ── 2.3 Duplication de nom → erreur lisible (pas 500) ─────────────────────
@@ -629,7 +636,8 @@ def phase3(client, accounts: dict, ids: tuple) -> dict:
         "notes": "Employe test E2E",
     }
 
-    resp = client.post("/employees/new", data=emp_data, follow_redirects=True)
+    # follow_redirects=False : action réussie → 302 vers /employees/{id}. Forme invalide → 200.
+    resp = client.post("/employees/new", data=emp_data, follow_redirects=False)
 
     # Récupérer l'id AVANT d'entrer dans un contexte pour des appels HTTP
     emp_id_for_detail = None
@@ -645,7 +653,7 @@ def phase3(client, accounts: dict, ids: tuple) -> dict:
         if emp:
             emp_id_for_detail = emp.id
             result["employee_id"] = emp.id
-            ok("Créer employe avec tous les champs", f"HTTP {resp.status_code}, id={emp.id}")
+            ok("Créer employe avec tous les champs", f"action={resp.status_code}, id={emp.id}, compte=rh@test.fr")
 
             # Vérifier chiffrement Fernet — colonnes réelles : 'iban' et 'national_id_number'
             # (l'ORM mappe _iban → colonne 'iban', _national_id_number → 'national_id_number')
@@ -665,19 +673,30 @@ def phase3(client, accounts: dict, ids: tuple) -> dict:
                 else:
                     ok("Champs sensibles accessibles", f"iban={iban_decrypted!r}, salaire={float(salary or 0):.0f}EUR")
         else:
-            fail("Creer employe", f"Employe non trouve en base apres POST", "—", f"HTTP {resp.status_code}")
+            fail("Creer employe", f"Employe non trouve en base apres POST", "—", f"action={resp.status_code}")
 
-    # Appel HTTP HORS du contexte applicatif pour éviter le LookupError ContextVar
+    # Vérifie que l'action 302 redirige bien vers la page de détail (200)
     if emp_id_for_detail:
-        detail = client.get(f"/employees/{emp_id_for_detail}", follow_redirects=True)
-        if detail.status_code == 200:
-            ok("Detail employe accessible", f"HTTP {detail.status_code}")
+        # Destination de la 302 de l'action = /employees/{id}
+        if resp.status_code == 302:
+            detail = client.get(f"/employees/{emp_id_for_detail}", follow_redirects=True)
+            if detail.status_code == 200:
+                ok("Detail employe accessible", f"action=302 → dest=200 /employees/{emp_id_for_detail}")
+            else:
+                fail("Detail employe", f"dest={detail.status_code}", "—", f"action={resp.status_code}")
         else:
-            fail("Detail employe", f"HTTP {detail.status_code}", "—", "—")
+            # L'action a échoué (form error = 200) — on essaie quand même le GET direct
+            detail = client.get(f"/employees/{emp_id_for_detail}", follow_redirects=True)
+            if detail.status_code == 200:
+                ok("Detail employe accessible", f"HTTP {detail.status_code} (action non-302={resp.status_code})")
+            else:
+                fail("Detail employe", f"action={resp.status_code}, dest={detail.status_code}", "—", "—")
 
     # ── 3.2 Contrat pour l'employé ──────────────────────────────────────────
+    # NOTE: new_contract retourne 302 AUSSI bien en succès qu'en erreur (flash+redirect)
+    # La DB est donc la seule preuve de succès réel. On vérifie aussi que la dest est 200.
     if result.get("employee_id") and ct_id:
-        resp = client.post(
+        resp_contract = client.post(
             f"/employees/{result['employee_id']}/contracts/new",
             data={
                 "contract_type_id": str(ct_id),
@@ -687,17 +706,22 @@ def phase3(client, accounts: dict, ids: tuple) -> dict:
                 "is_current": "true",
                 "notes": "Contrat initial",
             },
-            follow_redirects=True,
+            follow_redirects=False,
         )
+        # La route redirige toujours vers /employees/{id} (succès ou erreur) → vérifie 200
+        resp_dest = client.get(f"/employees/{result['employee_id']}", follow_redirects=True)
         with app.app_context():
             from app.models.contract import Contract
             contracts = _db.session.execute(
                 _db.select(Contract).where(Contract.employee_id == result["employee_id"])
             ).scalars().all()
-            if contracts:
-                ok("Contrat créé pour l'employé", f"HTTP {resp.status_code}, {len(contracts)} contrat(s)")
+            if resp_contract.status_code == 302 and resp_dest.status_code == 200 and contracts:
+                ok("Contrat créé pour l'employé",
+                   f"action=302, dest=200, {len(contracts)} contrat(s) en base")
             else:
-                fail("Créer contrat", f"Aucun contrat en base", "—", f"HTTP {resp.status_code}")
+                fail("Créer contrat",
+                     f"action={resp_contract.status_code}, dest={resp_dest.status_code}, contrats_en_base={len(contracts)}",
+                     "—", "—")
 
     # ── 3.3 Manager : accès seulement à son équipe ──────────────────────────
     logout(client)
@@ -757,6 +781,7 @@ def phase4(client, accounts: dict, ids: tuple, phase3_result: dict) -> dict:
             _db.session.commit()
 
     # ── 4.1 Employee soumet une demande de congé ─────────────────────────────
+    # follow_redirects=False : succès → 302 vers /leaves/{id}. Erreur (form/solde) → 200.
     _do_login(client, emp_user_creds["email"], emp_user_creds["password"])
 
     start = date.today() + timedelta(days=14)
@@ -773,9 +798,10 @@ def phase4(client, accounts: dict, ids: tuple, phase3_result: dict) -> dict:
             "employee_comment": "Vacances de test E2E",
             "is_emergency": "",
         },
-        follow_redirects=True,
+        follow_redirects=False,
     )
 
+    leave_id_for_detail = None
     with app.app_context():
         from app.models.leave_request import LeaveRequest
         lr = _db.session.execute(
@@ -788,11 +814,22 @@ def phase4(client, accounts: dict, ids: tuple, phase3_result: dict) -> dict:
         if lr:
             result["leave_id"] = lr.id
             result["leave_status"] = lr.status
-            ok("Employee soumet demande de congé", f"HTTP {resp.status_code}, leave_id={lr.id}, status={lr.status!r}")
+            leave_id_for_detail = lr.id
+
+    if leave_id_for_detail:
+        resp_dest = client.get(f"/leaves/{leave_id_for_detail}", follow_redirects=True)
+        with app.app_context():
+            from app.models.leave_request import LeaveRequest
+            lr = _db.session.get(LeaveRequest, leave_id_for_detail)
+        if resp.status_code == 302 and resp_dest.status_code == 200 and lr:
+            ok("Employee soumet demande de congé",
+               f"action=302, dest=200, leave_id={lr.id}, status={lr.status!r}, compte={emp_user_creds['email']}")
         else:
-            fail("Employee soumet demande", f"Aucune demande en base", "—", f"HTTP {resp.status_code}")
-            # Si pas de fiche employé, tester quand même la page
-            ok("Page /leaves/ accessible à l'employé", f"HTTP {resp.status_code}")
+            fail("Employee soumet demande de congé",
+                 f"action={resp.status_code}, dest={resp_dest.status_code}, status={lr.status if lr else '?'}",
+                 "—", f"compte={emp_user_creds['email']}")
+    else:
+        fail("Employee soumet demande", f"Aucune demande en base, action={resp.status_code}", "—", f"compte={emp_user_creds['email']}")
 
     logout(client)
 
@@ -805,24 +842,29 @@ def phase4(client, accounts: dict, ids: tuple, phase3_result: dict) -> dict:
             ok("Manager accède /leaves/approvals", f"HTTP {approvals.status_code}")
 
         # Approuver
+        # NOTE: decide() retourne TOUJOURS 302 (succès ou erreur flash) — DB est la preuve de succès
         resp = client.post(
             f"/leaves/{result['leave_id']}/decide",
             data={
                 "decision": "approve",
-                "comment": "Approuvé par manager test",
+                "comment": "Approuve par manager test",
                 "requires_hr_validation": "",
             },
-            follow_redirects=True,
+            follow_redirects=False,
         )
+        resp_dest = client.get(f"/leaves/{result['leave_id']}", follow_redirects=True)
         with app.app_context():
             from app.models.leave_request import LeaveRequest
             lr = _db.session.get(LeaveRequest, result["leave_id"])
             new_status = lr.status if lr else "?"
             result["leave_status_after"] = new_status
-            if new_status in ("approved", "pending_hr"):
-                ok("Manager approuve demande", f"HTTP {resp.status_code}, status={new_status!r}")
+            if resp.status_code == 302 and resp_dest.status_code == 200 and new_status in ("approved", "pending_hr"):
+                ok("Manager approuve demande",
+                   f"action=302, dest=200, status={new_status!r}, compte=manager@test.fr")
             else:
-                fail("Manager approuve demande", f"Status inattendu: {new_status!r}", "—", f"HTTP {resp.status_code}")
+                fail("Manager approuve demande",
+                     f"action={resp.status_code}, dest={resp_dest.status_code}, status={new_status!r}",
+                     "—", f"compte=manager@test.fr")
         logout(client)
 
     # ── 4.3 Vérifier le solde après approbation ──────────────────────────────
@@ -927,13 +969,14 @@ def phase5(client, accounts: dict, ids: tuple, phase3_result: dict) -> None:
     admin = accounts["admin"]
 
     # ── 5.1 Créer une campagne ────────────────────────────────────────────────
+    # follow_redirects=False : succès → 302 vers /performance/campaigns/{id}. Erreur → 200.
     _do_login(client, admin["email"], admin["password"])
 
     year = date.today().year
     resp = client.post(
         "/performance/campaigns/new",
         data={
-            "name": f"Évaluation E2E {year}",
+            "name": f"Evaluation E2E {year}",
             "description": "Test E2E campagne",
             "period_year": str(year),
             "period_type": "annual",
@@ -941,36 +984,42 @@ def phase5(client, accounts: dict, ids: tuple, phase3_result: dict) -> None:
             "end_date": f"{year}-12-31",
             "objective_deadline": f"{year}-03-31",
         },
-        follow_redirects=True,
+        follow_redirects=False,
     )
+    campaign_id = None
     with app.app_context():
         from app.models.evaluation import EvaluationCampaign
         campaign = _db.session.execute(
             _db.select(EvaluationCampaign)
-            .where(EvaluationCampaign.company_id == company_id, EvaluationCampaign.name.like("Évaluation E2E%"))
+            .where(EvaluationCampaign.company_id == company_id, EvaluationCampaign.name.like("Evaluation E2E%"))
             .order_by(EvaluationCampaign.id.desc())
             .limit(1)
         ).scalar_one_or_none()
         if campaign:
-            ok("Créer campagne d'évaluation", f"HTTP {resp.status_code}, id={campaign.id}")
+            campaign_id = campaign.id
+
+    if campaign_id:
+        resp_dest = client.get(f"/performance/campaigns/{campaign_id}", follow_redirects=True)
+        if resp.status_code == 302 and resp_dest.status_code == 200:
+            ok("Créer campagne d'évaluation",
+               f"action=302, dest=200, id={campaign_id}, compte=admin@test.fr")
         else:
-            fail("Créer campagne", "Campagne non trouvée en base", "—", f"HTTP {resp.status_code}")
-            logout(client)
-            return
+            fail("Créer campagne",
+                 f"action={resp.status_code}, dest={resp_dest.status_code}, id={campaign_id}",
+                 "—", f"compte=admin@test.fr")
+    else:
+        fail("Créer campagne", f"Campagne non trouvée en base, action={resp.status_code}", "—", f"compte=admin@test.fr")
+        logout(client)
+        return
 
     # ── 5.2 Créer une évaluation dans la campagne ────────────────────────────
+    # NOTE: campaign_detail POST retourne TOUJOURS 302 (succès ET erreur flash)
+    # La DB est la preuve de succès. On vérifie en plus que la dest. est 200.
+    evaluator_id = None
     with app.app_context():
         # Évaluateur = admin (doit avoir une fiche employé) ou manager
         from app.models.employee import Employee
         from app.models.evaluation import EvaluationCampaign
-
-        campaign = _db.session.execute(
-            _db.select(EvaluationCampaign)
-            .where(EvaluationCampaign.company_id == company_id, EvaluationCampaign.name.like("Évaluation E2E%"))
-            .order_by(EvaluationCampaign.id.desc())
-            .limit(1)
-        ).scalar_one_or_none()
-        campaign_id = campaign.id if campaign else None
 
         # S'assure qu'on a un évaluateur (fiche employé liée au compte admin ou manager)
         evaluator_emp = None
@@ -986,16 +1035,19 @@ def phase5(client, accounts: dict, ids: tuple, phase3_result: dict) -> None:
         if evaluator_emp is None and employee_id:
             evaluator_emp = _db.session.get(Employee, employee_id)
 
-    if campaign_id and employee_id:
         evaluator_id = evaluator_emp.id if evaluator_emp else employee_id
+
+    if campaign_id and employee_id and evaluator_id:
         resp = client.post(
             f"/performance/campaigns/{campaign_id}",
             data={
                 "employee_id": str(employee_id),
                 "evaluator_id": str(evaluator_id),
             },
-            follow_redirects=True,
+            follow_redirects=False,
         )
+        resp_dest = client.get(f"/performance/campaigns/{campaign_id}", follow_redirects=True)
+        eval_id = None
         with app.app_context():
             from app.models.evaluation import Evaluation
             ev = _db.session.execute(
@@ -1005,9 +1057,17 @@ def phase5(client, accounts: dict, ids: tuple, phase3_result: dict) -> None:
             ).scalar_one_or_none()
             if ev:
                 eval_id = ev.id
-                ok("Créer évaluation (send → in_progress)", f"HTTP {resp.status_code}, status={ev.status!r}")
+                if resp.status_code == 302 and resp_dest.status_code == 200:
+                    ok("Créer évaluation (send → in_progress)",
+                       f"action=302, dest=200, status={ev.status!r}, compte=admin@test.fr")
+                else:
+                    fail("Créer évaluation",
+                         f"action={resp.status_code}, dest={resp_dest.status_code}, status={ev.status!r}",
+                         "—", f"compte=admin@test.fr")
             else:
-                fail("Créer évaluation", "Évaluation non trouvée en base", "—", f"HTTP {resp.status_code}")
+                fail("Créer évaluation",
+                     f"Évaluation non trouvée en base, action={resp.status_code}",
+                     "—", f"compte=admin@test.fr")
                 logout(client)
                 return
     else:
@@ -1187,6 +1247,7 @@ def phase7(client, accounts: dict, phase3_result: dict) -> None:
         period_year -= 1
 
     # ── 7.1 Générer le bulletin ───────────────────────────────────────────────
+    # follow_redirects=False : succès → 302 vers /payroll/{id}. Erreur (ConflictError) → 200.
     resp = client.post(
         "/payroll/generate",
         data={
@@ -1196,7 +1257,7 @@ def phase7(client, accounts: dict, phase3_result: dict) -> None:
             "gross_override": "",
             "notes": "Bulletin test E2E",
         },
-        follow_redirects=True,
+        follow_redirects=False,
     )
 
     ps_id = None
@@ -1208,18 +1269,27 @@ def phase7(client, accounts: dict, phase3_result: dict) -> None:
             .order_by(PaySlip.id.desc())
             .limit(1)
         ).scalar_one_or_none()
-
         if ps:
             ps_id = ps.id
-            net = float(ps.net_salary or 0)
-            if net > 0:
-                ok("Générer bulletin de paie", f"HTTP {resp.status_code}, id={ps.id}, net={net:.2f}EUR")
-            elif net == 0:
-                fail("Bulletin net_salary", f"net={net} (nul)", "Verifier calcul paie", f"id={ps.id}")
-            else:
-                fail("Bulletin net_salary", f"net={net} (negatif)", "Verifier calcul paie", f"id={ps.id}")
+
+    if ps_id:
+        resp_dest = client.get(f"/payroll/{ps_id}", follow_redirects=True)
+        with app.app_context():
+            from app.models.payroll import PaySlip
+            ps = _db.session.get(PaySlip, ps_id)
+            net = float(ps.net_salary or 0) if ps else 0
+        if resp.status_code == 302 and resp_dest.status_code == 200 and net > 0:
+            ok("Générer bulletin de paie",
+               f"action=302, dest=200, id={ps_id}, net={net:.2f}EUR, compte=rh@test.fr")
+        elif net == 0:
+            fail("Bulletin net_salary", f"net={net} (nul)", "Verifier calcul paie",
+                 f"action={resp.status_code}, dest={resp_dest.status_code}")
         else:
-            fail("Generer bulletin", "Bulletin non trouve en base", "—", f"HTTP {resp.status_code}")
+            fail("Generer bulletin",
+                 f"action={resp.status_code}, dest={resp_dest.status_code}, net={net}",
+                 "—", f"compte=rh@test.fr")
+    else:
+        fail("Generer bulletin", f"Bulletin non trouve en base", "—", f"action={resp.status_code}")
 
     # Appels HTTP HORS du contexte applicatif pour éviter LookupError ContextVar
     if ps_id:
