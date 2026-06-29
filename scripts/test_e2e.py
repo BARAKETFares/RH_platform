@@ -1015,25 +1015,36 @@ def phase5(client, accounts: dict, ids: tuple, phase3_result: dict) -> None:
         logout(client)
         return
 
-    # ── 5.3 Submit (manager soumet le contenu) ───────────────────────────────
-    resp = client.post(
+    # ── 5.3 Submit (admin soumet le contenu) ─────────────────────────────────
+    # follow_redirects=False : on vérifie d'abord le 302 de l'action elle-même,
+    # puis on suit la redirection séparément pour prouver que la page de détail
+    # répond aussi 200 (et non 403 comme avant le fix de evaluation_detail).
+    resp_action = client.post(
         f"/performance/evaluations/{eval_id}/submit",
         data={
             "overall_score": "4",
-            "manager_overall_comment": "Très bonne performance",
+            "manager_overall_comment": "Tres bonne performance",
             "strengths": "Rigueur, autonomie",
             "areas_for_improvement": "Communication",
             "development_plan": "Formation leadership",
         },
-        follow_redirects=True,
+        follow_redirects=False,
+    )
+    # L'action réussit → 302 redirect vers le détail
+    resp_detail = client.get(
+        f"/performance/evaluations/{eval_id}",
+        follow_redirects=False,
     )
     with app.app_context():
         from app.models.evaluation import Evaluation
         ev = _db.session.get(Evaluation, eval_id)
-        if ev and ev.status == Evaluation.STATUS_EMPLOYEE_REVIEW:
-            ok("Submit évaluation → employee_review", f"HTTP {resp.status_code}, status={ev.status!r}")
+        if ev and ev.status == Evaluation.STATUS_EMPLOYEE_REVIEW and resp_action.status_code == 302 and resp_detail.status_code == 200:
+            ok("Submit evaluation (admin) - action 302 + detail 200",
+               f"action={resp_action.status_code}, detail={resp_detail.status_code}, status={ev.status!r}, compte=admin@test.fr")
         else:
-            fail("Submit évaluation", f"Status={ev.status if ev else '?'}", "—", f"HTTP {resp.status_code}")
+            fail("Submit evaluation",
+                 f"action={resp_action.status_code}, detail={resp_detail.status_code}, status={ev.status if ev else '?'}",
+                 "—", f"compte=admin@test.fr")
 
     logout(client)
 
@@ -1042,52 +1053,73 @@ def phase5(client, accounts: dict, ids: tuple, phase3_result: dict) -> None:
     _do_login(client, emp_user_creds["email"], emp_user_creds["password"])
 
     # confirm_signature est le nom exact du BooleanField WTForms (pas 'acknowledge')
-    resp = client.post(
+    resp_action = client.post(
         f"/performance/evaluations/{eval_id}/acknowledge",
         data={
             "employee_overall_comment": "Commentaire employe E2E",
             "confirm_signature": "true",
         },
-        follow_redirects=True,
+        follow_redirects=False,
+    )
+    resp_detail = client.get(
+        f"/performance/evaluations/{eval_id}",
+        follow_redirects=False,
     )
     with app.app_context():
         from app.models.evaluation import Evaluation
         ev = _db.session.get(Evaluation, eval_id)
-        if ev and ev.employee_acknowledged_at is not None:
-            ok("Acknowledge évaluation (employé)", f"HTTP {resp.status_code}, acknowledged_at={ev.employee_acknowledged_at}")
+        if ev and ev.employee_acknowledged_at is not None and resp_action.status_code == 302 and resp_detail.status_code == 200:
+            ok("Acknowledge evaluation (employe) - action 302 + detail 200",
+               f"action={resp_action.status_code}, detail={resp_detail.status_code}, acknowledged_at={ev.employee_acknowledged_at}")
         else:
-            fail("Acknowledge évaluation", f"employee_acknowledged_at=None, status={ev.status if ev else '?'}", "—", f"HTTP {resp.status_code}")
+            fail("Acknowledge evaluation",
+                 f"action={resp_action.status_code}, detail={resp_detail.status_code}, acknowledged_at={ev.employee_acknowledged_at if ev else '?'}",
+                 "—", f"compte={emp_user_creds['email']}")
 
     logout(client)
 
-    # ── 5.5 Finalize (manager finalise) ──────────────────────────────────────
+    # ── 5.5 Finalize (admin finalise) ────────────────────────────────────────
     _do_login(client, admin["email"], admin["password"])
-    resp = client.post(
+    resp_action = client.post(
         f"/performance/evaluations/{eval_id}/finalize",
         data={},
-        follow_redirects=True,
+        follow_redirects=False,
+    )
+    resp_detail = client.get(
+        f"/performance/evaluations/{eval_id}",
+        follow_redirects=False,
     )
     with app.app_context():
         from app.models.evaluation import Evaluation
         ev = _db.session.get(Evaluation, eval_id)
-        if ev and ev.status == Evaluation.STATUS_COMPLETED:
-            ok("Finalize évaluation → completed", f"HTTP {resp.status_code}, status={ev.status!r}")
+        if ev and ev.status == Evaluation.STATUS_COMPLETED and resp_action.status_code == 302 and resp_detail.status_code == 200:
+            ok("Finalize evaluation (admin) - action 302 + detail 200",
+               f"action={resp_action.status_code}, detail={resp_detail.status_code}, status={ev.status!r}, compte=admin@test.fr")
         else:
-            fail("Finalize évaluation", f"Status={ev.status if ev else '?'}", "—", f"HTTP {resp.status_code}")
+            fail("Finalize evaluation",
+                 f"action={resp_action.status_code}, detail={resp_detail.status_code}, status={ev.status if ev else '?'}",
+                 "—", f"compte=admin@test.fr")
 
-    # ── 5.6 Archive (rh/admin archive) ───────────────────────────────────────
-    resp = client.post(
+    # ── 5.6 Archive (admin archive) ──────────────────────────────────────────
+    resp_action = client.post(
         f"/performance/evaluations/{eval_id}/archive",
         data={},
-        follow_redirects=True,
+        follow_redirects=False,
+    )
+    resp_detail = client.get(
+        f"/performance/evaluations/{eval_id}",
+        follow_redirects=False,
     )
     with app.app_context():
         from app.models.evaluation import Evaluation
         ev = _db.session.get(Evaluation, eval_id)
-        if ev and ev.status == Evaluation.STATUS_ARCHIVED:
-            ok("Archive évaluation → archived", f"HTTP {resp.status_code}, status={ev.status!r}")
+        if ev and ev.status == Evaluation.STATUS_ARCHIVED and resp_action.status_code == 302 and resp_detail.status_code == 200:
+            ok("Archive evaluation (admin) - action 302 + detail 200",
+               f"action={resp_action.status_code}, detail={resp_detail.status_code}, status={ev.status!r}, compte=admin@test.fr")
         else:
-            fail("Archive évaluation", f"Status={ev.status if ev else '?'}", "—", f"HTTP {resp.status_code}")
+            fail("Archive evaluation",
+                 f"action={resp_action.status_code}, detail={resp_detail.status_code}, status={ev.status if ev else '?'}",
+                 "—", f"compte=admin@test.fr")
 
     # ── 5.7 Vue RH d'ensemble ─────────────────────────────────────────────────
     perf_rh = client.get("/performance/", follow_redirects=True)

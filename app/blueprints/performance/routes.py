@@ -353,28 +353,34 @@ def evaluation_detail(evaluation_id: int):
     except NotFoundError:
         abort(404, description="Évaluation introuvable.")
 
-    own_id = _require_employee_profile()
     is_privileged = current_user.role.name in ("admin", "rh")
-
-    if not is_privileged and own_id not in (evaluation.employee_id, evaluation.evaluator_id):
-        abort(403, description="Accès refusé à cette évaluation.")
+    if is_privileged:
+        own_id = current_user.employee.id if current_user.employee else None
+    else:
+        own_id = _require_employee_profile()
+        if own_id not in (evaluation.employee_id, evaluation.evaluator_id):
+            abort(403, description="Accès refusé à cette évaluation.")
 
     can_write_content = (
-        own_id == evaluation.evaluator_id
+        own_id is not None
+        and own_id == evaluation.evaluator_id
         and evaluation.status == Evaluation.STATUS_IN_PROGRESS
     )
     can_acknowledge = (
-        own_id == evaluation.employee_id
+        own_id is not None
+        and own_id == evaluation.employee_id
         and evaluation.status == Evaluation.STATUS_EMPLOYEE_REVIEW
         and evaluation.employee_acknowledged_at is None
     )
     already_acknowledged = (
-        own_id == evaluation.employee_id
+        own_id is not None
+        and own_id == evaluation.employee_id
         and evaluation.status == Evaluation.STATUS_EMPLOYEE_REVIEW
         and evaluation.employee_acknowledged_at is not None
     )
     can_finalize = (
-        own_id == evaluation.evaluator_id
+        own_id is not None
+        and own_id == evaluation.evaluator_id
         and evaluation.status == Evaluation.STATUS_EMPLOYEE_REVIEW
     )
     can_archive = (

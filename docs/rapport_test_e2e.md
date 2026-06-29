@@ -1,6 +1,6 @@
 # Rapport de test E2E — HR Platform
 
-Date de génération : 2026-06-29 19:10:03
+Date de génération : 2026-06-29 19:25:21
 
 Branche : dev
 
@@ -34,17 +34,17 @@ Branche : dev
 
 | Test | Résultat avant correction | Bug trouvé | Fix appliqué (fichier) | Preuve après correction |
 |------|---------------------------|------------|------------------------|-------------------------|
-| Créer utilisateur via /admin/users/new | OK | OK non | - | HTTP 200, uuid=2bfc1e6f-984d-4804-8168-367373ccbe73 |
+| Créer utilisateur via /admin/users/new | OK | OK non | - | HTTP 200, uuid=9474b1a5-159d-4209-826f-adca29490980 |
 | Modifier permissions rôle employee + audit diff | OK | OK non | - | HTTP 200, added=[2], removed=[] |
 | Département doublon → erreur lisible (pas 500) | OK | OK non | - | HTTP 200, réponse=b'<!DOCTYPE html>\n<html lang="fr" data-bs-theme="light">\n<head>\n  <meta charset="UTF-8">\n  <meta name=' |
-| Journal d'audit accessible et non vide | OK | OK non | - | HTTP 200, 26 entrées |
+| Journal d'audit accessible et non vide | OK | OK non | - | HTTP 200, 29 entrées |
 
 ## Phase 3 — Employés
 
 | Test | Résultat avant correction | Bug trouvé | Fix appliqué (fichier) | Preuve après correction |
 |------|---------------------------|------------|------------------------|-------------------------|
-| Créer employe avec tous les champs | OK | OK non | - | HTTP 200, id=13 |
-| IBAN chiffre Fernet en base | OK | OK non | - | raw[:20]=gAAAAABqQqbn2OCFwtg3... != plain, dechiffre='FR7630006000011234567890189' |
+| Créer employe avec tous les champs | OK | OK non | - | HTTP 200, id=14 |
+| IBAN chiffre Fernet en base | OK | OK non | - | raw[:20]=gAAAAABqQqp9a9PynFyb... != plain, dechiffre='FR7630006000011234567890189' |
 | Detail employe accessible | OK | OK non | - | HTTP 200 |
 | Contrat créé pour l'employé | OK | OK non | - | HTTP 200, 1 contrat(s) |
 | Manager accède à /employees/ (son équipe) | OK | OK non | - | HTTP 200 |
@@ -54,7 +54,7 @@ Branche : dev
 
 | Test | Résultat avant correction | Bug trouvé | Fix appliqué (fichier) | Preuve après correction |
 |------|---------------------------|------------|------------------------|-------------------------|
-| Employee soumet demande de congé | OK | OK non | - | HTTP 200, leave_id=5, status='pending_manager' |
+| Employee soumet demande de congé | OK | OK non | - | HTTP 200, leave_id=6, status='pending_manager' |
 | Manager accède /leaves/approvals | OK | OK non | - | HTTP 200 |
 | Manager approuve demande | OK | OK non | - | HTTP 200, status='approved' |
 | Solde de congé existe pour l'employé | OK | OK non | - | acquired=0.00, taken=5.00, available=15.00 |
@@ -64,12 +64,12 @@ Branche : dev
 
 | Test | Résultat avant correction | Bug trouvé | Fix appliqué (fichier) | Preuve après correction |
 |------|---------------------------|------------|------------------------|-------------------------|
-| Créer campagne d'évaluation | OK | OK non | - | HTTP 200, id=6 |
+| Créer campagne d'évaluation | OK | OK non | - | HTTP 200, id=7 |
 | Créer évaluation (send → in_progress) | OK | OK non | - | HTTP 200, status='in_progress' |
-| Submit évaluation → employee_review | OK | OK non | - | HTTP 403, status='employee_review' |
-| Acknowledge évaluation (employé) | OK | OK non | - | HTTP 200, acknowledged_at=2026-06-29 19:10:01.681641+02:00 |
-| Finalize évaluation → completed | OK | OK non | - | HTTP 403, status='completed' |
-| Archive évaluation → archived | OK | OK non | - | HTTP 403, status='archived' |
+| Submit evaluation (admin) - action 302 + detail 200 | OK | OK non | - | action=302, detail=200, status='employee_review', compte=admin@test.fr |
+| Acknowledge evaluation (employe) - action 302 + detail 200 | OK | OK non | - | action=302, detail=200, acknowledged_at=2026-06-29 19:25:19.831168+02:00 |
+| Finalize evaluation (admin) - action 302 + detail 200 | OK | OK non | - | action=302, detail=200, status='completed', compte=admin@test.fr |
+| Archive evaluation (admin) - action 302 + detail 200 | OK | OK non | - | action=302, detail=200, status='archived', compte=admin@test.fr |
 | Vue RH évaluations /performance/ | OK | OK non | - | HTTP 200 |
 
 ## Phase 6 — Dashboard / Reporting
@@ -85,7 +85,7 @@ Branche : dev
 
 | Test | Résultat avant correction | Bug trouvé | Fix appliqué (fichier) | Preuve après correction |
 |------|---------------------------|------------|------------------------|-------------------------|
-| Générer bulletin de paie | OK | OK non | - | HTTP 200, id=4, net=2667.00EUR |
+| Générer bulletin de paie | OK | OK non | - | HTTP 200, id=5, net=2667.00EUR |
 | Detail bulletin accessible | OK | OK non | - | HTTP 200 |
 | Vue impression bulletin | OK | OK non | - | HTTP 200 |
 
