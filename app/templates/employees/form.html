@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Modifier' if employee else 'Nouvel employé' }}{% endblock %}
+{% block page_title %}{{ 'Modifier ' + employee.full_name if employee else 'Nouvel employé' }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body p-4">
+
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          <h6 class="text-muted text-uppercase small fw-semibold mb-3">Identité</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              {{ form.first_name.label(class="form-label fw-medium") }}
+              {{ form.first_name(class="form-control" + (" is-invalid" if form.first_name.errors else "")) }}
+              {% for err in form.first_name.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.last_name.label(class="form-label fw-medium") }}
+              {{ form.last_name(class="form-control" + (" is-invalid" if form.last_name.errors else "")) }}
+              {% for err in form.last_name.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.gender.label(class="form-label fw-medium") }}
+              {{ form.gender(class="form-select") }}
+            </div>
+            <div class="col-md-6">
+              {{ form.birth_date.label(class="form-label fw-medium") }}
+              {{ form.birth_date(class="form-control", type="date") }}
+            </div>
+          </div>
+
+          <h6 class="text-muted text-uppercase small fw-semibold mb-3">Contact</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              {{ form.personal_email.label(class="form-label fw-medium") }}
+              {{ form.personal_email(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+              {{ form.personal_phone.label(class="form-label fw-medium") }}
+              {{ form.personal_phone(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+              {{ form.professional_phone.label(class="form-label fw-medium") }}
+              {{ form.professional_phone(class="form-control") }}
+            </div>
+            <div class="col-md-6">
+              {{ form.address_line1.label(class="form-label fw-medium") }}
+              {{ form.address_line1(class="form-control") }}
+            </div>
+            <div class="col-md-3">
+              {{ form.city.label(class="form-label fw-medium") }}
+              {{ form.city(class="form-control") }}
+            </div>
+            <div class="col-md-3">
+              {{ form.postal_code.label(class="form-label fw-medium") }}
+              {{ form.postal_code(class="form-control") }}
+            </div>
+          </div>
+
+          <h6 class="text-muted text-uppercase small fw-semibold mb-3">Rattachement</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              {{ form.department_id.label(class="form-label fw-medium") }}
+              {{ form.department_id(class="form-select") }}
+            </div>
+            <div class="col-md-6">
+              {{ form.position_id.label(class="form-label fw-medium") }}
+              {{ form.position_id(class="form-select") }}
+            </div>
+            <div class="col-md-6">
+              {{ form.site_id.label(class="form-label fw-medium") }}
+              {{ form.site_id(class="form-select") }}
+            </div>
+            <div class="col-md-6">
+              {{ form.manager_id.label(class="form-label fw-medium") }}
+              {{ form.manager_id(class="form-select") }}
+            </div>
+          </div>
+
+          <h6 class="text-muted text-uppercase small fw-semibold mb-3">Informations professionnelles</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              {{ form.employee_number.label(class="form-label fw-medium") }}
+              {{ form.employee_number(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+              {{ form.hire_date.label(class="form-label fw-medium") }}
+              {{ form.hire_date(class="form-control" + (" is-invalid" if form.hire_date.errors else ""), type="date") }}
+              {% for err in form.hire_date.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.probation_end_date.label(class="form-label fw-medium") }}
+              {{ form.probation_end_date(class="form-control" + (" is-invalid" if form.probation_end_date.errors else ""), type="date") }}
+              {% for err in form.probation_end_date.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.status.label(class="form-label fw-medium") }}
+              {{ form.status(class="form-select") }}
+            </div>
+          </div>
+
+          <div class="mb-4">
+            {{ form.notes.label(class="form-label fw-medium") }}
+            {{ form.notes(class="form-control") }}
+            <div class="form-text">Notes internes — non visibles par l'employé.</div>
+          </div>
+
+          <h6 class="text-muted text-uppercase small fw-semibold mb-3">
+            <i class="bi bi-lock me-1"></i>Données sensibles (Admin / RH)
+          </h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              {{ form.national_id_number.label(class="form-label fw-medium") }}
+              {{ form.national_id_number(class="form-control") }}
+            </div>
+            <div class="col-md-6">
+              {{ form.annual_gross_salary.label(class="form-label fw-medium") }}
+              <div class="input-group">
+                {{ form.annual_gross_salary(class="form-control") }}
+                <span class="input-group-text">€</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              {{ form.iban.label(class="form-label fw-medium") }}
+              {{ form.iban(class="form-control") }}
+            </div>
+            <div class="col-md-6">
+              {{ form.bic.label(class="form-label fw-medium") }}
+              {{ form.bic(class="form-control") }}
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            {% if employee %}
+            <a href="{{ url_for('employees.detail', employee_id=employee.id) }}" class="btn btn-outline-secondary">Annuler</a>
+            {% else %}
+            <a href="{{ url_for('employees.list_employees_route') }}" class="btn btn-outline-secondary">Annuler</a>
+            {% endif %}
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord{% endblock %}
+{% block page_title %}Tableau de bord{% endblock %}
+
+{% block content %}
+
+{% if total_employees is none and not show_team_kpis %}
+
+  {# ── Vue employé standard : résumé personnel uniquement ────────────── #}
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="card kpi-card h-100">
+        <div class="card-body">
+          <div class="text-muted small text-uppercase fw-semibold mb-1">
+            Mes demandes en attente
+          </div>
+          <div class="kpi-value text-warning">{{ pending_leaves }}</div>
+          <a href="{{ url_for('leaves.my_requests') }}" class="small text-decoration-none">
+            Voir mes demandes →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% else %}
+
+  {# ── Vue admin/rh/manager : KPIs agrégés ────────────────────────────── #}
+  <div class="row g-3 mb-4">
+
+    <div class="col-md-4">
+      <div class="card kpi-card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="text-muted small text-uppercase fw-semibold mb-1">
+                {{ 'Effectif total' if show_company_kpis else 'Taille de mon équipe' }}
+              </div>
+              <div class="kpi-value text-primary">{{ total_employees }}</div>
+            </div>
+            <i class="bi bi-people fs-2 text-primary opacity-25"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card kpi-card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="text-muted small text-uppercase fw-semibold mb-1">
+                Congés en attente
+              </div>
+              <div class="kpi-value text-warning">{{ pending_leaves }}</div>
+            </div>
+            <i class="bi bi-hourglass-split fs-2 text-warning opacity-25"></i>
+          </div>
+          {% if pending_leaves > 0 %}
+          <a href="{{ url_for('leaves.approvals') }}" class="small text-decoration-none">
+            Traiter les demandes →
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if show_company_kpis %}
+    <div class="col-md-4">
+      <div class="card kpi-card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="text-muted small text-uppercase fw-semibold mb-1">
+                Taux d'absentéisme (mois)
+              </div>
+              <div class="kpi-value text-info">{{ absenteeism_rate }}%</div>
+            </div>
+            <i class="bi bi-graph-down fs-2 text-info opacity-25"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  {% if show_company_kpis %}
+  {# ── Graphique répartition des statuts ──────────────────────────────── #}
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header fw-semibold">Répartition des employés par statut</div>
+        <div class="card-body">
+          {% if status_breakdown %}
+          <div class="d-flex justify-content-center">
+            <canvas id="statusChart" width="260" height="260"></canvas>
+          </div>
+          {# Tableau de secours lisible sans JS #}
+          <ul class="list-unstyled mt-3 mb-0 small">
+            {% set status_labels = {
+                'active': 'Actif', 'on_leave': 'En congé',
+                'probation': "Période d'essai", 'suspended': 'Suspendu',
+                'terminated': 'Parti'
+            } %}
+            {% for st, count in status_breakdown.items() %}
+            <li class="d-flex justify-content-between border-bottom py-1">
+              <span>{{ status_labels.get(st, st) }}</span>
+              <strong>{{ count }}</strong>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="bi bi-people fs-2 d-block mb-2 opacity-25"></i>
+            Aucune donnée disponible.
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if show_company_kpis and status_breakdown and status_breakdown|length > 0 %}
+<script>
+  const statusLabels = {
+    active: 'Actif', on_leave: 'En congé', probation: 'Période d\'essai',
+    suspended: 'Suspendu', terminated: 'Parti',
+  };
+  const statusColors = {
+    active: '#198754', on_leave: '#0dcaf0', probation: '#ffc107',
+    suspended: '#6c757d', terminated: '#212529',
+  };
+
+  const rawData = {{ status_breakdown | tojson }};
+  const labels = Object.keys(rawData).map(k => statusLabels[k] || k);
+  const values = Object.values(rawData);
+  const colors = Object.keys(rawData).map(k => statusColors[k] || '#adb5bd');
+
+  new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderWidth: 2,
+        borderColor: '#fff',
+      }],
+    },
+    options: {
+      responsive: false,
+      plugins: {
+        legend: { position: 'bottom' },
+      },
+    },
+  });
+</script>
+{% endif %}
+{% endblock %}

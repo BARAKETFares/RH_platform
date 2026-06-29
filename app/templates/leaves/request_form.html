@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Nouvelle demande de congé{% endblock %}
+{% block page_title %}Nouvelle demande d'absence{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body p-4">
+
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          {# ── Type d'absence ──────────────────────────────────────── #}
+          <div class="mb-3">
+            {{ form.leave_type_id.label(class="form-label fw-medium") }}
+            {{ form.leave_type_id(class="form-select" + (" is-invalid" if form.leave_type_id.errors else "")) }}
+            {% for err in form.leave_type_id.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          {# ── Dates ──────────────────────────────────────────────── #}
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.start_date.label(class="form-label fw-medium") }}
+              {{ form.start_date(class="form-control" + (" is-invalid" if form.start_date.errors else ""), type="date") }}
+              {% for err in form.start_date.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+              <div class="form-check mt-2">
+                {{ form.start_half_day(class="form-check-input") }}
+                {{ form.start_half_day.label(class="form-check-label small text-muted") }}
+              </div>
+            </div>
+            <div class="col-md-6">
+              {{ form.end_date.label(class="form-label fw-medium") }}
+              {{ form.end_date(class="form-control" + (" is-invalid" if form.end_date.errors else ""), type="date") }}
+              {% for err in form.end_date.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+              <div class="form-check mt-2">
+                {{ form.end_half_day(class="form-check-input") }}
+                {{ form.end_half_day.label(class="form-check-label small text-muted") }}
+              </div>
+            </div>
+          </div>
+
+          {# ── Commentaire ────────────────────────────────────────── #}
+          <div class="mb-3">
+            {{ form.employee_comment.label(class="form-label fw-medium") }}
+            {{ form.employee_comment(class="form-control" + (" is-invalid" if form.employee_comment.errors else "")) }}
+            {% for err in form.employee_comment.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          {# ── Urgence ────────────────────────────────────────────── #}
+          <div class="form-check mb-4">
+            {{ form.is_emergency(class="form-check-input", id="isEmergency") }}
+            {{ form.is_emergency.label(class="form-check-label", for="isEmergency") }}
+            <div class="form-text">
+              À cocher uniquement si la demande déroge au délai de prévenance habituel.
+            </div>
+          </div>
+
+          {{ form.document_path() }}
+
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('leaves.my_requests') }}" class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

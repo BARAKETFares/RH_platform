@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Campagnes d'évaluation{% endblock %}
+{% block page_title %}Campagnes d'évaluation{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('performance.new_campaign') }}" class="btn btn-primary">
+  <i class="bi bi-plus-lg me-1"></i>Nouvelle campagne
+</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Nom</th>
+          <th>Période</th>
+          <th>Dates</th>
+          <th>Avancement</th>
+          <th>Statut</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in campaigns %}
+        <tr>
+          <td class="fw-medium">{{ c.name }}</td>
+          <td>
+            {% set period_labels = {
+              'annual': 'Annuelle', 'semester': 'Semestrielle', 'quarterly': 'Trimestrielle',
+              'probation': "Fin de période d'essai", 'custom': 'Personnalisée'
+            } %}
+            {{ period_labels.get(c.period_type, c.period_type) }} — {{ c.period_year }}
+          </td>
+          <td class="text-muted small">{{ c.start_date | date_fr }} → {{ c.end_date | date_fr }}</td>
+          <td style="min-width: 140px;">
+            <div class="d-flex align-items-center gap-2">
+              <div class="progress flex-grow-1" style="height: 8px;">
+                <div class="progress-bar bg-success" style="width: {{ c.completion_rate_pct }}%;"></div>
+              </div>
+              <span class="text-muted small">{{ c.completed_count }}/{{ c.evaluation_count }}</span>
+            </div>
+          </td>
+          <td>
+            {% if c.is_open %}
+              <span class="badge bg-success">Ouverte</span>
+            {% elif c.is_active %}
+              <span class="badge bg-secondary">Planifiée/Fermée</span>
+            {% else %}
+              <span class="badge bg-light text-dark border">Inactive</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('performance.campaign_detail', campaign_id=c.id) }}"
+               class="btn btn-sm btn-outline-primary">Voir</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">
+            <i class="bi bi-flag fs-3 d-block mb-2"></i>
+            Aucune campagne d'évaluation pour le moment.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<a href="{{ url_for('performance.index') }}" class="btn btn-link mt-3 text-muted">
+  ← Retour aux évaluations
+</a>
+
+{% endblock %}

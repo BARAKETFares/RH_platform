@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Modifier le rôle — {{ role.label }}{% endblock %}
+{% block page_title %}Modifier le rôle — {{ role.label }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.list_users') }}">Administration</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.list_roles') }}">Rôles</a></li>
+    <li class="breadcrumb-item active">{{ role.label }}</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    {% if role.is_system %}
+    <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-info-circle-fill fs-5"></i>
+      <div>
+        Rôle <strong>système</strong> — le code interne
+        (<code>{{ role.name }}</code>) est immuable.
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-body p-4">
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          {# ── Identité ──────────────────────────────────────────────────── #}
+          <h6 class="text-muted text-uppercase small fw-semibold mb-3">
+            <i class="bi bi-shield me-1"></i>Identité du rôle
+          </h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Code interne</label>
+              <input class="form-control bg-light" type="text"
+                     value="{{ role.name }}" disabled>
+              <div class="form-text">Immuable — utilisé dans le code.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Niveau hiérarchique</label>
+              <input class="form-control bg-light" type="text"
+                     value="{{ role.hierarchy_level }}" disabled>
+            </div>
+            <div class="col-12">
+              {{ form.label.label(class="form-label fw-medium") }}
+              {{ form.label(class="form-control" + (" is-invalid" if form.label.errors else ""),
+                            autofocus=true) }}
+              {% for err in form.label.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-12">
+              {{ form.description.label(class="form-label fw-medium") }}
+              {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else "")) }}
+              {% for err in form.description.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          {# ── Permissions ───────────────────────────────────────────────── #}
+          <h6 class="text-muted text-uppercase small fw-semibold mb-2">
+            <i class="bi bi-key me-1"></i>Permissions
+            <span class="badge bg-secondary ms-1">
+              {{ form.permission_ids.choices | length }}
+            </span>
+          </h6>
+
+          {% if form.permission_ids.errors %}
+          <div class="alert alert-danger small py-2 mb-3">
+            {% for err in form.permission_ids.errors %}{{ err }}{% endfor %}
+          </div>
+          {% endif %}
+
+          <div class="d-flex gap-2 mb-3">
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onclick="document.querySelectorAll('.perm-check').forEach(c => c.checked = true)">
+              Tout cocher
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onclick="document.querySelectorAll('.perm-check').forEach(c => c.checked = false)">
+              Tout décocher
+            </button>
+          </div>
+
+          {% set current_perm_ids = form.permission_ids.data or [] %}
+          {% set ns = namespace(last_module="") %}
+
+          <div class="row g-2 mb-4">
+            {% for value, label in form.permission_ids.choices %}
+              {% set module = label.split(':')[0] | trim if ':' in label else 'autres' %}
+              {% if module != ns.last_module %}
+                {% set ns.last_module = module %}
+                <div class="col-12 mt-2">
+                  <small class="text-uppercase fw-semibold text-muted">
+                    <i class="bi bi-folder me-1"></i>{{ module }}
+                  </small>
+                  <hr class="mt-1 mb-0">
+                </div>
+              {% endif %}
+              {% set parts = label.split('—') %}
+              <div class="col-md-6 col-lg-4">
+                <div class="form-check">
+                  <input class="form-check-input perm-check" type="checkbox"
+                         name="{{ form.permission_ids.name }}"
+                         id="perm_{{ value }}"
+                         value="{{ value }}"
+                         {% if value in current_perm_ids %}checked{% endif %}>
+                  <label class="form-check-label" for="perm_{{ value }}">
+                    <code class="text-primary small">{{ parts[0] | trim }}</code>
+                    {% if parts | length > 1 %}
+                    <br><span class="text-muted" style="font-size:.8rem">
+                      {{ parts[1] | trim }}
+                    </span>
+                    {% endif %}
+                  </label>
+                </div>
+              </div>
+            {% else %}
+            <div class="col-12">
+              <p class="text-muted fst-italic small">Aucune permission définie en base.</p>
+            </div>
+            {% endfor %}
+          </div>
+
+          {# ── Actions ───────────────────────────────────────────────────── #}
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('admin.list_roles') }}"
+               class="btn btn-outline-secondary">Annuler</a>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

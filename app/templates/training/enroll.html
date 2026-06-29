@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Inscription — {{ training.title }}{% endblock %}
+{% block page_title %}Inscription à une formation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+
+    {# Récapitulatif formation #}
+    <div class="card mb-3 border-0 bg-light">
+      <div class="card-body py-2">
+        <div class="fw-semibold">{{ training.title }}</div>
+        <div class="text-muted small">
+          {% if training.organisme %}{{ training.organisme }} · {% endif %}
+          {% if training.training_type == 'presentiel' %}Présentiel
+          {% elif training.training_type == 'distanciel' %}Distanciel
+          {% else %}E-learning{% endif %}
+          {% if training.duration_hours %} · {{ training.duration_hours }}h{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body p-4">
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          {#
+            FIX C-1 : le discriminant est le rôle, pas le nombre de choix.
+            - employee    → lecture seule + champ caché (auto-inscription)
+            - admin/rh/manager → SelectField (peut choisir dans la liste)
+          #}
+          {% if role_name == 'employee' %}
+          <div class="mb-3">
+            <label class="form-label fw-medium">Employé inscrit</label>
+            <input type="text" class="form-control"
+                   value="{{ form.employee_id.choices[0][1] if form.employee_id.choices else '' }}"
+                   readonly>
+            <input type="hidden" name="employee_id"
+                   value="{{ form.employee_id.choices[0][0] if form.employee_id.choices else '' }}">
+          </div>
+          {% else %}
+          <div class="mb-3">
+            {{ form.employee_id.label(class="form-label fw-medium") }}
+            {{ form.employee_id(class="form-select" + (" is-invalid" if form.employee_id.errors else "")) }}
+            {% for err in form.employee_id.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          {# Dates optionnelles #}
+          <div class="row g-3 mb-4">
+            <div class="col-6">
+              {{ form.start_date.label(class="form-label fw-medium") }}
+              {{ form.start_date(class="form-control" + (" is-invalid" if form.start_date.errors else ""),
+                                 type="date") }}
+              {% for err in form.start_date.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-6">
+              {{ form.end_date.label(class="form-label fw-medium") }}
+              {{ form.end_date(class="form-control" + (" is-invalid" if form.end_date.errors else ""),
+                               type="date") }}
+              {% for err in form.end_date.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('training.training_detail', training_id=training.id) }}"
+               class="btn btn-outline-secondary">Annuler</a>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

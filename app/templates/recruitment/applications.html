@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+{% block title %}{{ posting.title }} — Candidatures{% endblock %}
+{% block page_title %}{{ posting.title }}{% endblock %}
+
+{% block page_actions %}
+{% if role_name in ['admin', 'rh'] %}
+
+{# Boutons d'action sur le statut de l'offre #}
+<div class="d-flex gap-2">
+  {% if posting.status == 'draft' %}
+  <form method="POST" action="{{ url_for('recruitment.posting_action', posting_id=posting.id) }}" class="d-inline">
+    {{ decision_form.hidden_tag() }}
+    <input type="hidden" name="action" value="open">
+    <button type="submit" class="btn btn-success">
+      <i class="bi bi-play-circle me-1"></i>Publier
+    </button>
+  </form>
+  {% elif posting.status == 'open' %}
+  <form method="POST" action="{{ url_for('recruitment.posting_action', posting_id=posting.id) }}" class="d-inline">
+    {{ decision_form.hidden_tag() }}
+    <input type="hidden" name="action" value="close">
+    <button type="submit" class="btn btn-outline-warning">
+      <i class="bi bi-stop-circle me-1"></i>Clôturer
+    </button>
+  </form>
+  {% endif %}
+
+  {% if posting.status != 'cancelled' %}
+  <form method="POST" action="{{ url_for('recruitment.posting_action', posting_id=posting.id) }}" class="d-inline">
+    {{ decision_form.hidden_tag() }}
+    <input type="hidden" name="action" value="cancel">
+    <button type="submit" class="btn btn-outline-danger"
+            onclick="return confirm('Annuler définitivement cette offre ?')">
+      <i class="bi bi-x-circle me-1"></i>Annuler
+    </button>
+  </form>
+  {% endif %}
+
+  <a href="{{ url_for('recruitment.edit_posting', posting_id=posting.id) }}"
+     class="btn btn-outline-secondary">
+    <i class="bi bi-pencil me-1"></i>Modifier
+  </a>
+
+  {% if posting.status == 'open' %}
+  <a href="{{ url_for('recruitment.add_application', posting_id=posting.id) }}"
+     class="btn btn-primary">
+    <i class="bi bi-person-plus me-1"></i>Ajouter candidature
+  </a>
+  {% endif %}
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  {# ── Colonne latérale gauche — Info offre ──────────────────────────── #}
+  <div class="col-lg-3">
+
+    <div class="card mb-3">
+      <div class="card-body">
+
+        {# Statut #}
+        <div class="mb-3">
+          {% if posting.status == 'open' %}
+            <span class="badge bg-success fs-6 px-3 py-2">
+              <i class="bi bi-circle-fill me-1" style="font-size:.6rem"></i>Ouverte
+            </span>
+          {% elif posting.status == 'draft' %}
+            <span class="badge bg-secondary fs-6 px-3 py-2">Brouillon</span>
+          {% elif posting.status == 'closed' %}
+            <span class="badge bg-warning text-dark fs-6 px-3 py-2">Clôturée</span>
+          {% else %}
+            <span class="badge bg-danger fs-6 px-3 py-2">Annulée</span>
+          {% endif %}
+        </div>
+
+        <dl class="mb-0 small">
+          {% if posting.department %}
+          <dt class="text-muted">Département</dt>
+          <dd>{{ posting.department.name }}</dd>
+          {% endif %}
+
+          {% if posting.contract_type %}
+          <dt class="text-muted">Contrat</dt>
+          <dd>{{ posting.contract_type }}</dd>
+          {% endif %}
+
+          {% if posting.location %}
+          <dt class="text-muted">Lieu</dt>
+          <dd>{{ posting.location }}</dd>
+          {% endif %}
+
+          {% if posting.salary_range %}
+          <dt class="text-muted">Rémunération</dt>
+          <dd>{{ posting.salary_range }}</dd>
+          {% endif %}
+
+          <dt class="text-muted">Postes à pourvoir</dt>
+          <dd>{{ posting.headcount or 1 }}</dd>
+
+          {% if posting.published_at %}
+          <dt class="text-muted">Publiée le</dt>
+          <dd>{{ posting.published_at.strftime('%d/%m/%Y') }}</dd>
+          {% endif %}
+
+          {% if posting.closing_date %}
+          <dt class="text-muted">Date limite</dt>
+          <dd class="{{ 'text-danger' if posting.closing_date < today else '' }}">
+            {{ posting.closing_date.strftime('%d/%m/%Y') }}
+          </dd>
+          {% endif %}
+        </dl>
+
+      </div>
+    </div>
+
+    {# KPI rapides #}
+    <div class="row g-2 mb-3">
+      {% set total = applications | length %}
+      {% set actives = applications | selectattr('is_active') | list | length %}
+      <div class="col-6">
+        <div class="card text-center py-2">
+          <div class="fw-bold fs-4 text-primary">{{ total }}</div>
+          <div class="text-muted small">Total</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="card text-center py-2">
+          <div class="fw-bold fs-4 text-success">{{ actives }}</div>
+          <div class="text-muted small">Actives</div>
+        </div>
+      </div>
+    </div>
+
+    {# Navigation retour #}
+    <a href="{{ url_for('recruitment.list_postings') }}"
+       class="btn btn-outline-secondary w-100 small">
+      ← Toutes les offres
+    </a>
+
+  </div>
+
+  {# ── Colonne principale — Candidatures ─────────────────────────────── #}
+  <div class="col-lg-9">
+
+    {# Description de l'offre (réduite) #}
+    {% if posting.description %}
+    <div class="card mb-3 bg-light border-0">
+      <div class="card-body py-2 small text-muted">
+        {{ posting.description | truncate(300) }}
+      </div>
+    </div>
+    {% endif %}
+
+    {# Filtres statut candidatures #}
+    <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+      <span class="text-muted small fw-semibold me-1">Filtre :</span>
+      <a href="{{ url_for('recruitment.posting_detail', posting_id=posting.id) }}"
+         class="btn btn-sm {{ 'btn-dark' if not current_status else 'btn-outline-secondary' }}">
+        Toutes
+      </a>
+      {% for st in APPLICATION_STATUSES %}
+      <a href="{{ url_for('recruitment.posting_detail', posting_id=posting.id, status=st) }}"
+         class="btn btn-sm {{ 'btn-primary' if current_status == st else 'btn-outline-secondary' }}">
+        {{ STATUS_LABELS[st] }}
+      </a>
+      {% endfor %}
+    </div>
+
+    {# Tableau des candidatures #}
+    {% if applications %}
+    <div class="card shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Candidat</th>
+              <th>Source</th>
+              <th>Statut</th>
+              <th>Reçue le</th>
+              <th class="text-center">Entretiens</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for app in applications %}
+            <tr>
+              <td>
+                <div class="fw-semibold">{{ app.candidate.full_name }}</div>
+                <div class="text-muted small">{{ app.candidate.email }}</div>
+              </td>
+              <td class="text-muted small">
+                {% set source_labels = {
+                    'linkedin': 'LinkedIn', 'jobboard': 'Job board',
+                    'referral': 'Cooptation', 'spontaneous': 'Spontanée',
+                    'website': 'Site carrières', 'other': 'Autre'
+                } %}
+                {{ source_labels.get(app.candidate.source, app.candidate.source) }}
+              </td>
+              <td>
+                {% if app.status == 'recue' %}
+                  <span class="badge bg-primary-subtle text-primary-emphasis">Reçue</span>
+                {% elif app.status == 'preselectionnee' %}
+                  <span class="badge bg-info-subtle text-info-emphasis">Présélectionnée</span>
+                {% elif app.status == 'entretien' %}
+                  <span class="badge bg-warning-subtle text-warning-emphasis">Entretien</span>
+                {% elif app.status == 'offre' %}
+                  <span class="badge bg-success-subtle text-success-emphasis">Offre</span>
+                {% elif app.status == 'embauchee' %}
+                  <span class="badge bg-success">Embauchée</span>
+                {% else %}
+                  <span class="badge bg-danger-subtle text-danger-emphasis">Refusée</span>
+                {% endif %}
+              </td>
+              <td class="text-muted small">
+                {{ app.applied_at.strftime('%d/%m/%Y') if app.applied_at else '—' }}
+              </td>
+              <td class="text-center small">
+                {{ app.interview_count }}
+              </td>
+              <td class="text-end">
+                <a href="{{ url_for('recruitment.application_detail', application_id=app.id) }}"
+                   class="btn btn-sm btn-outline-primary">
+                  Voir
+                </a>
+                {% if app.is_active and role_name in ['admin', 'rh'] %}
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#decisionModal{{ app.id }}">
+                  <i class="bi bi-arrow-right-circle"></i>
+                </button>
+                {% endif %}
+                {% if app.status == 'embauchee' and app.hired_employee_id is none
+                      and role_name in ['admin', 'rh'] %}
+                <a href="{{ url_for('employees.list_employees_route') }}"
+                   class="btn btn-sm btn-success ms-1"
+                   title="Créer la fiche employé">
+                  <i class="bi bi-person-add"></i>
+                </a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% else %}
+    <div class="card">
+      <div class="card-body text-center py-5 text-muted">
+        <i class="bi bi-inbox fs-1 d-block mb-3 opacity-25"></i>
+        <p class="mb-0">Aucune candidature
+          {% if current_status %}avec le statut « {{ STATUS_LABELS[current_status] }} »{% endif %}.
+        </p>
+        {% if posting.status == 'open' and role_name in ['admin', 'rh'] %}
+        <a href="{{ url_for('recruitment.add_application', posting_id=posting.id) }}"
+           class="btn btn-primary mt-3">
+          <i class="bi bi-person-plus me-1"></i>Ajouter une candidature
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{# ── Modales de décision rapide ──────────────────────────────────────── #}
+{% if role_name in ['admin', 'rh'] %}
+{% set transition_map = {
+    'recue':           [('preselectionnee', 'Présélectionner'), ('refusee', 'Refuser')],
+    'preselectionnee': [('entretien', 'Convoquer en entretien'), ('refusee', 'Refuser')],
+    'entretien':       [('offre', 'Émettre une offre'), ('refusee', 'Refuser')],
+    'offre':           [('embauchee', 'Confirmer l\'embauche'), ('refusee', 'Refuser')],
+} %}
+{% for app in applications %}
+{% if app.is_active and app.status in transition_map %}
+<div class="modal fade" id="decisionModal{{ app.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST"
+            action="{{ url_for('recruitment.update_application_decision', application_id=app.id) }}"
+            novalidate>
+        {{ decision_form.hidden_tag() }}
+        <div class="modal-header">
+          <h5 class="modal-title">
+            Décision — {{ app.candidate.full_name }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-medium">Décision</label>
+            <select name="status" class="form-select" required>
+              {% for val, label in transition_map[app.status] %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-0" id="rejectionBlock{{ app.id }}" style="display:none">
+            <label class="form-label fw-medium small">Motif de refus (optionnel)</label>
+            <textarea name="rejection_reason" class="form-control form-control-sm" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+          <button type="submit" class="btn btn-primary">Appliquer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Afficher le bloc motif de refus quand "refusee" est sélectionné
+document.querySelectorAll('.modal select[name="status"]').forEach(function(sel) {
+  var modalId = sel.closest('.modal').id;
+  var appId   = modalId.replace('decisionModal', '');
+  var block   = document.getElementById('rejectionBlock' + appId);
+  sel.addEventListener('change', function() {
+    if (block) block.style.display = this.value === 'refusee' ? 'block' : 'none';
+  });
+});
+</script>
+{% endblock %}

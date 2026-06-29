@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Organigramme{% endblock %}
+{% block page_title %}Organigramme{% endblock %}
+
+{% block extra_css %}
+<style>
+  .org-tree { list-style: none; padding-left: 0; }
+  .org-tree ul { list-style: none; padding-left: 2rem; border-left: 2px dashed #dee2e6; margin-top: .5rem; }
+  .org-node {
+    background: #fff; border: 1px solid #e9ecef; border-radius: .5rem;
+    padding: .75rem 1rem; margin-bottom: .5rem; display: inline-block; min-width: 220px;
+  }
+  .org-node .dept-name { font-weight: 600; }
+  .org-node .manager-name { font-size: .8rem; color: #6c757d; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% macro render_department(dept) %}
+<li>
+  <div class="org-node">
+    <div class="dept-name">
+      <i class="bi bi-diagram-2 me-1 text-primary"></i>{{ dept.name }}
+    </div>
+    {% if dept.manager %}
+      <div class="manager-name">
+        <i class="bi bi-person-fill me-1"></i>{{ dept.manager.full_name }}
+      </div>
+    {% endif %}
+    <div class="manager-name">{{ dept.employee_count }} employé(s)</div>
+  </div>
+  {% if dept.children %}
+  <ul>
+    {% for child in dept.children %}
+      {{ render_department(child) }}
+    {% endfor %}
+  </ul>
+  {% endif %}
+</li>
+{% endmacro %}
+
+<div class="card">
+  <div class="card-body">
+    <ul class="org-tree">
+      {% for dept in departments %}
+        {{ render_department(dept) }}
+      {% else %}
+      <li class="text-center text-muted py-4">
+        <i class="bi bi-diagram-3 fs-3 d-block mb-2"></i>
+        Aucun département configuré.
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<a href="{{ url_for('employees.list_employees_route') }}" class="btn btn-link mt-3 text-muted">
+  ← Retour à la liste des employés
+</a>
+
+{% endblock %}

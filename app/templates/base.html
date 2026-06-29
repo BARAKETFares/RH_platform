@@ -24,8 +24,206 @@
   {% include "components/_navbar.html" %}
 
   <div class="d-flex" id="wrapper">
-    {# Sidebar #}
-    {% include "components/_sidebar.html" %}
+
+    {# ── Sidebar dynamique selon le rôle ──────────────────────────────── #}
+    {% set role = current_user.role.name if current_user.is_authenticated else '' %}
+    <nav id="sidebar" class="bg-white border-end"
+         style="min-width: 240px; min-height: calc(100vh - 56px);">
+      <div class="p-3">
+        <ul class="nav flex-column gap-1">
+
+          {# Tableau de bord — accessible à tous les rôles connectés #}
+          <li class="nav-item">
+            <a href="{{ url_for('reporting.dashboard') }}"
+   class="nav-link {{ 'active fw-medium' if request.endpoint == 'reporting.dashboard' else 'text-dark' }}">
+  <i class="bi bi-speedometer2 me-2"></i>Tableau de bord
+</a>
+          </li>
+
+          {# Employés — admin, rh, manager #}
+          {% if role in ['admin', 'rh', 'manager'] %}
+          <li class="nav-item">
+            <a href="{{ url_for('employees.list_employees_route') }}"
+               class="nav-link {{ 'active fw-medium' if request.blueprint == 'employees' else 'text-dark' }}">
+              <i class="bi bi-people me-2"></i>Employés
+            </a>
+          </li>
+          {% endif %}
+
+          {# Congés — uniquement si fiche employé liée #}
+          {% if current_user.employee %}
+          <li class="nav-item">
+            <a href="{{ url_for('leaves.my_requests') }}"
+               class="nav-link {{ 'active fw-medium' if request.endpoint == 'leaves.my_requests' else 'text-dark' }}">
+              <i class="bi bi-calendar-x me-2"></i>Mes congés
+            </a>
+          </li>
+          {% endif %}
+
+          {# Approbations — manager, rh, admin #}
+          {% if role in ['manager', 'rh', 'admin'] %}
+          <li class="nav-item">
+            <a href="{{ url_for('leaves.approvals') }}"
+               class="nav-link {{ 'active fw-medium' if request.endpoint == 'leaves.approvals' else 'text-dark' }}">
+              <i class="bi bi-check2-square me-2"></i>Approbations
+            </a>
+          </li>
+          {% endif %}
+
+          {# Organigramme — admin, rh, manager #}
+          {% if role in ['admin', 'rh', 'manager'] %}
+          <li class="nav-item">
+            <a href="{{ url_for('employees.organigramme') }}"
+               class="nav-link {{ 'active fw-medium' if request.endpoint == 'employees.organigramme' else 'text-dark' }}">
+              <i class="bi bi-diagram-3 me-2"></i>Organigramme
+            </a>
+          </li>
+          {% endif %}
+
+          {# Évaluations — tous les rôles, fiche employé requise #}
+          {% if current_user.employee and role in ['admin', 'rh', 'manager', 'employee'] %}
+          <li class="nav-item">
+            <a href="{{ url_for('performance.index') }}"
+               class="nav-link {{ 'active fw-medium' if request.blueprint == 'performance' else 'text-dark' }}">
+              <i class="bi bi-star me-2"></i>Évaluations
+            </a>
+          </li>
+          {% endif %}
+
+          {# Formations — catalogue accessible à tous #}
+          <li class="nav-item">
+            <a href="{{ url_for('training.list_trainings_view') }}"
+               class="nav-link {{ 'active fw-medium' if request.blueprint == 'training' else 'text-dark' }}">
+              <i class="bi bi-mortarboard me-2"></i>Formations
+            </a>
+          </li>
+
+          {# Mes formations — si fiche employé liée #}
+          {% if current_user.employee %}
+          <li class="nav-item ms-3">
+            <a href="{{ url_for('training.my_trainings') }}"
+               class="nav-link small {{ 'active fw-medium' if request.endpoint == 'training.my_trainings' else 'text-muted' }}">
+              <i class="bi bi-journal-check me-2"></i>Mes formations
+            </a>
+          </li>
+          {% endif %}
+
+          {# Suivi équipe formations — manager, rh, admin #}
+          {% if role in ['manager', 'rh', 'admin'] %}
+          <li class="nav-item ms-3">
+            <a href="{{ url_for('training.team_trainings') }}"
+               class="nav-link small {{ 'active fw-medium' if request.endpoint == 'training.team_trainings' else 'text-muted' }}">
+              <i class="bi bi-people-fill me-2"></i>Suivi équipe
+            </a>
+          </li>
+          {% endif %}
+
+          {# Recrutement — admin, rh, manager #}
+          {% if role in ['admin', 'rh', 'manager'] %}
+          <li class="nav-item">
+            <a href="{{ url_for('recruitment.list_postings') }}"
+               class="nav-link {{ 'active fw-medium' if request.blueprint == 'recruitment' else 'text-dark' }}">
+              <i class="bi bi-person-lines-fill me-2"></i>Recrutement
+            </a>
+          </li>
+          {% endif %}
+
+          {# Paie — admin, rh (+ employé pour ses fiches de paie) #}
+          {% if role in ['admin', 'rh'] %}
+          <li class="nav-item">
+            <a href="{{ url_for('payroll.list_payslips_route') }}"
+               class="nav-link {{ 'active fw-medium' if request.blueprint == 'payroll' else 'text-dark' }}">
+              <i class="bi bi-wallet2 me-2"></i>Paie
+            </a>
+          </li>
+          {% elif current_user.employee %}
+          <li class="nav-item">
+            <a href="{{ url_for('payroll.my_payslips') }}"
+               class="nav-link {{ 'active fw-medium' if request.endpoint == 'payroll.my_payslips' else 'text-dark' }}">
+              <i class="bi bi-wallet2 me-2"></i>Mes fiches de paie
+            </a>
+          </li>
+          {% endif %}
+
+          {# Reporting — admin, rh #}
+          {% if role in ['admin', 'rh'] %}
+          <li class="nav-item">
+            <a href="{{ url_for('reporting.dashboard') }}"
+               class="nav-link {{ 'active fw-medium' if request.blueprint == 'reporting' else 'text-dark' }}">
+              <i class="bi bi-bar-chart me-2"></i>Reporting
+            </a>
+          </li>
+          {% endif %}
+
+          {# ── Organisation — admin + rh ────────────────────────────────── #}
+          {% if role in ['admin', 'rh'] %}
+          <li class="nav-item mt-3">
+            <span class="nav-link text-muted small fw-semibold text-uppercase px-0">
+              Organisation
+            </span>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('admin.list_departments') }}"
+               class="nav-link {{ 'active fw-medium' if request.endpoint in ['admin.list_departments', 'admin.new_department', 'admin.edit_department'] else 'text-dark' }}">
+              <i class="bi bi-diagram-2 me-2"></i>Départements
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('admin.list_positions') }}"
+               class="nav-link {{ 'active fw-medium' if request.endpoint in ['admin.list_positions', 'admin.new_position', 'admin.edit_position'] else 'text-dark' }}">
+              <i class="bi bi-briefcase me-2"></i>Postes
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('admin.list_sites') }}"
+               class="nav-link {{ 'active fw-medium' if request.endpoint in ['admin.list_sites', 'admin.new_site', 'admin.edit_site'] else 'text-dark' }}">
+              <i class="bi bi-geo-alt me-2"></i>Sites
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('admin.list_contract_types') }}"
+               class="nav-link {{ 'active fw-medium' if request.endpoint in ['admin.list_contract_types', 'admin.new_contract_type', 'admin.edit_contract_type'] else 'text-dark' }}">
+              <i class="bi bi-file-earmark-text me-2"></i>Types de contrats
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('admin.list_leave_types') }}"
+               class="nav-link {{ 'active fw-medium' if request.endpoint in ['admin.list_leave_types', 'admin.new_leave_type', 'admin.edit_leave_type'] else 'text-dark' }}">
+              <i class="bi bi-calendar-x me-2"></i>Types de congés
+            </a>
+          </li>
+          {% endif %}
+
+          {# ── Système — admin uniquement ───────────────────────────────── #}
+          {% if role == 'admin' %}
+          <li class="nav-item mt-3">
+            <span class="nav-link text-muted small fw-semibold text-uppercase px-0">
+              Système
+            </span>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('admin.list_users') }}"
+               class="nav-link {{ 'active fw-medium' if request.endpoint in ['admin.list_users', 'admin.new_user', 'admin.edit_user'] else 'text-dark' }}">
+              <i class="bi bi-people me-2"></i>Utilisateurs
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('admin.list_roles') }}"
+               class="nav-link {{ 'active fw-medium' if request.endpoint in ['admin.list_roles', 'admin.edit_role'] else 'text-dark' }}">
+              <i class="bi bi-shield me-2"></i>Rôles
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('admin.audit_log') }}"
+               class="nav-link {{ 'active fw-medium' if request.endpoint == 'admin.audit_log' else 'text-dark' }}">
+              <i class="bi bi-journal-text me-2"></i>Journal d'audit
+            </a>
+          </li>
+          {% endif %}
+
+        </ul>
+      </div>
+    </nav>
 
     {# Contenu principal #}
     <main id="page-content-wrapper" class="flex-grow-1 p-4">

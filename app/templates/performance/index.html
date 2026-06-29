@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+{% block title %}Évaluations & Objectifs{% endblock %}
+{% block page_title %}Évaluations & Objectifs{% endblock %}
+
+{% block page_actions %}
+{% if current_user.role.name in ['admin', 'rh', 'manager'] %}
+<div class="d-flex gap-2">
+  <a href="{{ url_for('performance.new_objective') }}" class="btn btn-outline-primary">
+    <i class="bi bi-plus-lg me-1"></i>Nouvel objectif
+  </a>
+  {% if current_user.role.name in ['admin', 'rh'] %}
+  <a href="{{ url_for('performance.list_campaigns') }}" class="btn btn-primary">
+    <i class="bi bi-flag me-1"></i>Campagnes
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{# ── Vue d'ensemble RH/admin — toutes campagnes ─────────────────────── #}
+{% if campaigns_overview %}
+<div class="card mb-4 border-primary">
+  <div class="card-header bg-primary-subtle d-flex justify-content-between align-items-center fw-semibold">
+    <span><i class="bi bi-graph-up me-2"></i>Vue d'ensemble — Toutes les campagnes actives</span>
+    <a href="{{ url_for('performance.list_campaigns') }}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-flag me-1"></i>Gérer les campagnes
+    </a>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle table-hover">
+      <thead class="table-light">
+        <tr>
+          <th>Campagne</th>
+          <th class="text-center" title="Brouillon">Brouillon</th>
+          <th class="text-center" title="En rédaction">En rédaction</th>
+          <th class="text-center" title="Relecture employé">Relecture</th>
+          <th class="text-center" title="Terminées">Terminées</th>
+          <th class="text-center" title="Total">Total</th>
+          <th class="text-center" title="Taux de complétion">Taux</th>
+          <th class="text-end"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in campaigns_overview %}
+        {% set c = item.campaign %}
+        {% set ct = item.counts %}
+        <tr>
+          <td class="fw-medium">
+            {{ c.name }}
+            <div class="text-muted small">{{ c.period_year }} · {{ c.period_type }}</div>
+          </td>
+          <td class="text-center">
+            {% if ct.draft %}<span class="badge bg-secondary">{{ ct.draft }}</span>{% else %}—{% endif %}
+          </td>
+          <td class="text-center">
+            {% if ct.in_progress %}<span class="badge bg-info text-dark">{{ ct.in_progress }}</span>{% else %}—{% endif %}
+          </td>
+          <td class="text-center">
+            {% if ct.employee_review %}<span class="badge bg-warning text-dark">{{ ct.employee_review }}</span>{% else %}—{% endif %}
+          </td>
+          <td class="text-center">
+            {% if ct.completed %}<span class="badge bg-success">{{ ct.completed }}</span>{% else %}—{% endif %}
+          </td>
+          <td class="text-center fw-medium">{{ ct.total }}</td>
+          <td class="text-center">
+            {% if ct.total > 0 %}
+            {% set pct = ((ct.completed / ct.total) * 100) | round | int %}
+            <div class="d-flex align-items-center gap-1 justify-content-center">
+              <div class="progress" style="width: 48px; height: 6px;">
+                <div class="progress-bar bg-success" style="width: {{ pct }}%;"></div>
+              </div>
+              <span class="small text-muted">{{ pct }}%</span>
+            </div>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('performance.campaign_detail', campaign_id=c.id) }}"
+               class="btn btn-sm btn-outline-primary">Détail</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center text-muted py-3">Aucune campagne active.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{# ── Évaluations à rédiger (manager/rh/admin) ──────────────────────── #}
+{% if pending_to_write %}
+<div class="card mb-4 border-warning">
+  <div class="card-header bg-warning-subtle fw-semibold">
+    <i class="bi bi-pencil-square me-2"></i>Évaluations à rédiger ({{ pending_to_write | length }})
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Employé</th>
+          <th>Campagne</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in pending_to_write %}
+        <tr>
+          <td>{{ ev.employee.full_name }}</td>
+          <td>{{ ev.campaign.name }}</td>
+          <td class="text-end">
+            <a href="{{ url_for('performance.evaluation_detail', evaluation_id=ev.id) }}"
+               class="btn btn-sm btn-warning">Rédiger</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{# ── Évaluations soumises — en attente de signature employé (manager/rh/admin) #}
+{% if pending_employee_ack %}
+<div class="card mb-4 border-info">
+  <div class="card-header bg-info-subtle fw-semibold">
+    <i class="bi bi-hourglass-split me-2"></i>En attente de signature employé ({{ pending_employee_ack | length }})
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Employé</th>
+          <th>Campagne</th>
+          <th>Soumise le</th>
+          <th>Signature</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in pending_employee_ack %}
+        <tr>
+          <td>{{ ev.employee.full_name }}</td>
+          <td>{{ ev.campaign.name }}</td>
+          <td class="text-muted small">
+            {{ ev.evaluator_submitted_at.strftime('%d/%m/%Y') if ev.evaluator_submitted_at else '—' }}
+          </td>
+          <td>
+            {% if ev.employee_acknowledged_at %}
+            <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Signée</span>
+            {% else %}
+            <span class="badge bg-secondary">En attente</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('performance.evaluation_detail', evaluation_id=ev.id) }}"
+               class="btn btn-sm {{ 'btn-success' if ev.employee_acknowledged_at else 'btn-outline-info' }}">
+              {{ 'Finaliser' if ev.employee_acknowledged_at else 'Voir' }}
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{# ── Évaluations à signer (employee) ─────────────────────────────────── #}
+{% if pending_my_review %}
+<div class="card mb-4 border-warning">
+  <div class="card-header bg-warning-subtle fw-semibold">
+    <i class="bi bi-pen me-2"></i>Évaluations à signer ({{ pending_my_review | length }})
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Campagne</th>
+          <th>Évaluateur</th>
+          <th>Score</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in pending_my_review %}
+        <tr>
+          <td>{{ ev.campaign.name }}</td>
+          <td>{{ ev.evaluator.full_name }}</td>
+          <td>{{ ev.overall_score if ev.overall_score else '—' }}/5</td>
+          <td class="text-end">
+            <a href="{{ url_for('performance.evaluation_detail', evaluation_id=ev.id) }}"
+               class="btn btn-sm btn-warning">
+              <i class="bi bi-pen me-1"></i>Lire et signer
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{# ── Objectifs fixés pour mon équipe (manager/rh/admin) ────────────── #}
+{% if team_objectives %}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center fw-semibold">
+    <span><i class="bi bi-people me-2"></i>Objectifs de mon équipe ({{ team_objectives | length }})</span>
+    <a href="{{ url_for('performance.new_objective') }}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-plus-lg me-1"></i>Nouvel objectif
+    </a>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle table-hover">
+      <thead class="table-light">
+        <tr>
+          <th>Employé</th>
+          <th>Objectif</th>
+          <th style="width: 160px;">Avancement</th>
+          <th>Échéance</th>
+          <th>Campagne</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for obj in team_objectives %}
+        <tr class="{{ 'table-danger' if obj.is_overdue }}">
+          <td class="fw-medium">{{ obj.employee.full_name }}</td>
+          <td>
+            <div>{{ obj.title }}</div>
+            {% if obj.description %}
+            <div class="text-muted small">{{ obj.description | truncate(60) }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="progress flex-grow-1" style="height: 6px;">
+                <div class="progress-bar {{ 'bg-danger' if obj.is_overdue else 'bg-primary' }}"
+                     style="width: {{ obj.completion_pct }}%;"></div>
+              </div>
+              <span class="text-muted small" style="min-width: 32px;">{{ obj.completion_pct }}%</span>
+            </div>
+          </td>
+          <td class="small {{ 'text-danger fw-medium' if obj.is_overdue else 'text-muted' }}">
+            {% if obj.due_date %}
+              {{ obj.due_date | date_fr }}
+              {% if obj.is_overdue %}<br><span class="badge bg-danger">En retard</span>{% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td class="small text-muted">
+            {% if obj.campaign %}
+              {{ obj.campaign.name }}
+            {% else %}
+              <span class="fst-italic">Hors campagne</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-4">
+
+  {# ── Mes objectifs ─────────────────────────────────────────────── #}
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-bullseye me-2"></i>Mes objectifs en cours
+      </div>
+      <div class="card-body">
+        {% for obj in objectives %}
+        <div class="border rounded p-3 mb-3 {{ 'border-danger' if obj.is_overdue }}">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <div class="fw-medium">{{ obj.title }}</div>
+              {% if obj.description %}
+                <div class="text-muted small">{{ obj.description }}</div>
+              {% endif %}
+            </div>
+            <span class="badge bg-light text-dark border">{{ obj.weight }}%</span>
+          </div>
+
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="progress flex-grow-1" style="height: 8px;">
+              <div class="progress-bar {{ 'bg-danger' if obj.is_overdue else 'bg-primary' }}"
+                   style="width: {{ obj.completion_pct }}%;"></div>
+            </div>
+            <span class="text-muted small">{{ obj.completion_pct }}%</span>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="text-muted small">
+              {% if obj.due_date %}
+                <i class="bi bi-calendar-event me-1"></i>{{ obj.due_date | date_fr }}
+                {% if obj.is_overdue %}
+                  <span class="text-danger fw-medium">— En retard</span>
+                {% endif %}
+              {% else %}
+                Pas d'échéance
+              {% endif %}
+            </div>
+
+            <form method="POST" action="{{ url_for('performance.update_progress', objective_id=obj.id) }}"
+                  class="d-flex align-items-center gap-1">
+              {{ progress_form.hidden_tag() }}
+              <input type="number" name="completion_pct" min="0" max="100" value="{{ obj.completion_pct }}"
+                     class="form-control form-control-sm" style="width: 70px;">
+              <button type="submit" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-check-lg"></i>
+              </button>
+            </form>
+          </div>
+
+          {% if obj.manager_rating or obj.employee_rating %}
+          <div class="mt-2 pt-2 border-top d-flex gap-3 small">
+            {% if obj.manager_rating %}
+              <span class="text-muted">Note manager : <strong>{{ obj.manager_rating }}/5</strong></span>
+            {% endif %}
+            {% if obj.employee_rating %}
+              <span class="text-muted">Auto-évaluation : <strong>{{ obj.employee_rating }}/5</strong></span>
+            {% endif %}
+            {% if obj.has_rating_discrepancy %}
+              <span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Écart notable</span>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-bullseye fs-3 d-block mb-2"></i>
+          Aucun objectif actif pour le moment.
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Mes évaluations ───────────────────────────────────────────── #}
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-clipboard-data me-2"></i>Mes évaluations
+      </div>
+      <div class="list-group list-group-flush">
+        {% for ev in my_evaluations %}
+        <a href="{{ url_for('performance.evaluation_detail', evaluation_id=ev.id) }}"
+           class="list-group-item list-group-item-action">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-medium">{{ ev.campaign.name }}</div>
+              <div class="text-muted small">
+                {% if ev.status == 'employee_review' and ev.employee_acknowledged_at %}
+                  <i class="bi bi-check-circle text-success me-1"></i>Signé — en attente du manager
+                {% elif ev.status == 'employee_review' %}
+                  <i class="bi bi-pen text-warning me-1"></i>À signer
+                {% elif ev.overall_score %}
+                  Score : {{ ev.overall_score }}/5
+                {% else %}
+                  Pas encore notée
+                {% endif %}
+              </div>
+            </div>
+            {% if ev.status == 'employee_review' and ev.employee_acknowledged_at %}
+            <span class="badge bg-success">Signé <i class="bi bi-check-lg"></i></span>
+            {% elif ev.status == 'employee_review' %}
+            <span class="badge bg-warning">À signer</span>
+            {% elif ev.status == 'completed' %}
+            <span class="badge bg-success">Complétée</span>
+            {% elif ev.status == 'archived' %}
+            <span class="badge bg-dark">Archivée</span>
+            {% elif ev.status == 'in_progress' %}
+            <span class="badge bg-info">En cours</span>
+            {% else %}
+            <span class="badge bg-secondary">{{ ev.status | capitalize }}</span>
+            {% endif %}
+          </div>
+        </a>
+        {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-clipboard-x fs-3 d-block mb-2"></i>
+          Aucune évaluation pour le moment.
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

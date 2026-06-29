@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Modifier' if leave_type else 'Nouveau type de congé' }}{% endblock %}
+{% block page_title %}{{ 'Modifier ' + leave_type.name if leave_type else 'Nouveau type de congé' }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.list_users') }}">Administration</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.list_leave_types') }}">Types de congés</a></li>
+    <li class="breadcrumb-item active">{{ 'Modifier' if leave_type else 'Nouveau' }}</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body p-4">
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          <h6 class="text-muted text-uppercase small fw-semibold mb-3">Identification</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-7">
+              {{ form.name.label(class="form-label fw-medium") }}
+              {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+              {% for err in form.name.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+            </div>
+            <div class="col-md-3">
+              {{ form.code.label(class="form-label fw-medium") }}
+              {{ form.code(class="form-control text-uppercase" + (" is-invalid" if form.code.errors else "")) }}
+              {% for err in form.code.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+            </div>
+            <div class="col-md-2">
+              {{ form.color_hex.label(class="form-label fw-medium") }}
+              {{ form.color_hex(class="form-control form-control-color w-100") }}
+            </div>
+            <div class="col-12">
+              {{ form.description.label(class="form-label fw-medium") }}
+              {{ form.description(class="form-control") }}
+            </div>
+          </div>
+
+          <h6 class="text-muted text-uppercase small fw-semibold mb-3">Règles de demande</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              {{ form.min_advance_notice_days.label(class="form-label fw-medium") }}
+              <div class="input-group">
+                {{ form.min_advance_notice_days(class="form-control") }}
+                <span class="input-group-text">j</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              {{ form.max_consecutive_days.label(class="form-label fw-medium") }}
+              <div class="input-group">
+                {{ form.max_consecutive_days(class="form-control") }}
+                <span class="input-group-text">j</span>
+              </div>
+              <div class="form-text">0 = pas de limite</div>
+            </div>
+          </div>
+
+          <h6 class="text-muted text-uppercase small fw-semibold mb-3">Paramètres</h6>
+          <div class="row g-2 mb-4">
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.is_paid(class="form-check-input") }}
+                {{ form.is_paid.label(class="form-check-label") }}
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.impacts_leave_balance(class="form-check-input") }}
+                {{ form.impacts_leave_balance.label(class="form-check-label") }}
+                <div class="form-text">Cocher pour CP, RTT — décocher pour maladie, maternité…</div>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.requires_justification(class="form-check-input") }}
+                {{ form.requires_justification.label(class="form-check-label") }}
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.requires_document(class="form-check-input") }}
+                {{ form.requires_document.label(class="form-check-label") }}
+                <div class="form-text">Ex : arrêt maladie nécessite un certificat médical.</div>
+              </div>
+            </div>
+            <div class="col-12 mt-2">
+              <div class="form-check">
+                {{ form.is_active(class="form-check-input") }}
+                {{ form.is_active.label(class="form-check-label") }}
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('admin.list_leave_types') }}" class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

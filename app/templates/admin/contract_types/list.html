@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Types de contrats{% endblock %}
+{% block page_title %}Types de contrats{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('admin.new_contract_type') }}" class="btn btn-primary">
+  <i class="bi bi-plus-lg me-1"></i>Nouveau type de contrat
+</a>
+{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.list_users') }}">Administration</a></li>
+    <li class="breadcrumb-item active">Types de contrats</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+{% set duration_labels = {
+  'cdi': 'CDI', 'cdd': 'CDD', 'interim': 'Intérim',
+  'apprenticeship': 'Alternance', 'internship': 'Stage', 'freelance': 'Freelance'
+} %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Nom</th>
+          <th>Catégorie</th>
+          <th class="text-center">CP / an</th>
+          <th class="text-center">RTT / an</th>
+          <th class="text-center">Préavis (j)</th>
+          <th class="text-center">Statut</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ct in contract_types %}
+        <tr>
+          <td class="fw-medium">{{ ct.name }}</td>
+          <td>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+              {{ duration_labels.get(ct.duration_type, ct.duration_type) }}
+            </span>
+          </td>
+          <td class="text-center">{{ ct.paid_leave_days }}</td>
+          <td class="text-center">{{ ct.rtt_days }}</td>
+          <td class="text-center">{{ ct.notice_period_days }}</td>
+          <td class="text-center">
+            {% if ct.is_active %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle">Actif</span>
+            {% else %}
+            <span class="badge bg-secondary">Inactif</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('admin.edit_contract_type', ct_id=ct.id) }}"
+               class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-pencil me-1"></i>Modifier
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">
+            <i class="bi bi-file-earmark-text fs-2 d-block mb-2 opacity-25"></i>
+            Aucun type de contrat. <a href="{{ url_for('admin.new_contract_type') }}">Créer le premier</a>.
+            <div class="text-muted small mt-2">
+              Exemples : CDI Cadre, CDI Non-Cadre, CDD, Alternance, Stage…
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

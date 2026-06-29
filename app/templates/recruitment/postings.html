@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Offres d'emploi{% endblock %}
+{% block page_title %}Offres d'emploi{% endblock %}
+
+{% block page_actions %}
+{% set role = current_user.role.name if current_user.role else '' %}
+{% if role in ['admin', 'rh'] %}
+<a href="{{ url_for('recruitment.new_posting') }}" class="btn btn-primary">
+  <i class="bi bi-plus-lg me-1"></i>Nouvelle offre
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{# ── Filtres par statut ─────────────────────────────────────────────── #}
+<div class="d-flex gap-2 mb-4 flex-wrap align-items-center">
+  <span class="text-muted small fw-semibold me-1">Statut :</span>
+  <a href="{{ url_for('recruitment.list_postings') }}"
+     class="btn btn-sm {{ 'btn-dark' if not current_status else 'btn-outline-secondary' }}">
+    Toutes
+  </a>
+  {% for st in JOB_STATUSES %}
+  {% set label = STATUS_LABELS[st] %}
+  {% set colors = {
+      'draft': ('btn-outline-secondary', ''),
+      'open':  ('btn-success',           ''),
+      'closed':('btn-outline-warning',   ''),
+      'cancelled':('btn-outline-danger', ''),
+  } %}
+  <a href="{{ url_for('recruitment.list_postings', status=st) }}"
+     class="btn btn-sm {{ 'btn-success' if st == 'open' and current_status == st
+                          else 'btn-warning text-dark' if st == 'closed' and current_status == st
+                          else 'btn-danger' if st == 'cancelled' and current_status == st
+                          else 'btn-secondary' if st == 'draft' and current_status == st
+                          else 'btn-outline-secondary' }}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+{# ── Tableau des offres ─────────────────────────────────────────────── #}
+{% if postings %}
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Intitulé du poste</th>
+          <th>Département</th>
+          <th>Contrat</th>
+          <th class="text-center">Postes</th>
+          <th>Statut</th>
+          <th>Publication</th>
+          <th>Date limite</th>
+          <th class="text-center">Candidatures</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in postings %}
+        <tr>
+          <td>
+            <a href="{{ url_for('recruitment.posting_detail', posting_id=p.id) }}"
+               class="fw-semibold text-decoration-none text-dark">
+              {{ p.title }}
+            </a>
+            {% if p.location %}
+            <div class="text-muted small">
+              <i class="bi bi-geo-alt me-1"></i>{{ p.location }}
+            </div>
+            {% endif %}
+          </td>
+
+          <td class="text-muted small">
+            {{ p.department.name if p.department else '—' }}
+          </td>
+
+          <td class="small">
+            {% if p.contract_type %}
+              <span class="badge bg-light text-dark border">{{ p.contract_type }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+
+          <td class="text-center small text-muted">{{ p.headcount or 1 }}</td>
+
+          <td>
+            {% if p.status == 'open' %}
+              <span class="badge bg-success">Ouverte</span>
+            {% elif p.status == 'draft' %}
+              <span class="badge bg-secondary">Brouillon</span>
+            {% elif p.status == 'closed' %}
+              <span class="badge bg-warning text-dark">Clôturée</span>
+            {% else %}
+              <span class="badge bg-danger">Annulée</span>
+            {% endif %}
+          </td>
+
+          <td class="text-muted small">
+            {{ p.published_at.strftime('%d/%m/%Y') if p.published_at else '—' }}
+          </td>
+
+          <td class="text-muted small">
+            {% if p.closing_date %}
+              {% if p.closing_date < today %}
+                <span class="text-danger">{{ p.closing_date.strftime('%d/%m/%Y') }}</span>
+              {% else %}
+                {{ p.closing_date.strftime('%d/%m/%Y') }}
+              {% endif %}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+
+          <td class="text-center">
+            <a href="{{ url_for('recruitment.posting_detail', posting_id=p.id) }}"
+               class="badge bg-primary-subtle text-primary-emphasis text-decoration-none">
+              {{ p.application_count }}
+            </a>
+          </td>
+
+          <td class="text-end">
+            <a href="{{ url_for('recruitment.posting_detail', posting_id=p.id) }}"
+               class="btn btn-sm btn-outline-primary me-1">
+              <i class="bi bi-eye"></i>
+            </a>
+            {% set role = current_user.role.name if current_user.role else '' %}
+            {% if role in ['admin', 'rh'] %}
+            <a href="{{ url_for('recruitment.edit_posting', posting_id=p.id) }}"
+               class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-pencil"></i>
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% else %}
+<div class="card shadow-sm">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-briefcase fs-1 d-block mb-3 opacity-25"></i>
+    <p class="mb-1">Aucune offre d'emploi
+      {% if current_status %}avec le statut « {{ STATUS_LABELS[current_status] }} »{% endif %}.
+    </p>
+    {% set role = current_user.role.name if current_user.role else '' %}
+    {% if role in ['admin', 'rh'] %}
+    <a href="{{ url_for('recruitment.new_posting') }}" class="btn btn-primary mt-3">
+      <i class="bi bi-plus-lg me-1"></i>Créer une offre
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+

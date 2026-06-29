@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Approbations{% endblock %}
+{% block page_title %}Demandes à approuver{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Employé</th>
+          <th>Type</th>
+          <th>Période</th>
+          <th>Jours</th>
+          <th>Statut</th>
+          <th>Soumise le</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lr in leave_requests %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <span class="avatar-circle bg-primary-subtle text-primary"
+                    style="width:32px;height:32px;font-size:0.75rem;">
+                {{ lr.employee.initials }}
+              </span>
+              {{ lr.employee.full_name }}
+            </div>
+          </td>
+          <td>
+            <span class="badge" style="background-color: {{ lr.leave_type.color_hex }};">
+              {{ lr.leave_type.code }}
+            </span>
+          </td>
+          <td>{{ lr.start_date | date_fr }} → {{ lr.end_date | date_fr }}</td>
+          <td>{{ lr.working_days | days_label if lr.working_days else '—' }}</td>
+          <td>
+            <span class="badge badge-leave-{{ lr.status }}">
+              {{ lr.status | replace('_', ' ') | capitalize }}
+            </span>
+          </td>
+          <td class="text-muted small">{{ lr.created_at | date_fr }}</td>
+          <td class="text-end">
+            <a href="{{ url_for('leaves.detail', leave_id=lr.id) }}" class="btn btn-sm btn-primary">
+              Traiter
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">
+            <i class="bi bi-check2-circle fs-3 d-block mb-2"></i>
+            Aucune demande en attente d'approbation.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if pagination.pages > 1 %}
+<nav class="mt-3">
+  <ul class="pagination justify-content-center">
+    <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+      <a class="page-link" href="{{ url_for('leaves.approvals', page=pagination.prev_num) }}">«</a>
+    </li>
+    {% for p in range(1, pagination.pages + 1) %}
+    <li class="page-item {{ 'active' if p == pagination.page }}">
+      <a class="page-link" href="{{ url_for('leaves.approvals', page=p) }}">{{ p }}</a>
+    </li>
+    {% endfor %}
+    <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+      <a class="page-link" href="{{ url_for('leaves.approvals', page=pagination.next_num) }}">»</a>
+    </li>
+  </ul>
+</nav>
+{% endif %}
+
+{% endblock %}

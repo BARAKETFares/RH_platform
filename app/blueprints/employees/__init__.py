@@ -1,18 +1,21 @@
 """
-Blueprint : employees
+Blueprint Employees — Gestion des employés (Pages HTML / SSR).
 
-Enregistré dans create_app() avec url_prefix="/employees".
-Ce fichier instancie le Blueprint et importe les routes afin
-que les décorateurs @bp.route() soient enregistrés au chargement.
+Préfixe URL : /employees  (enregistré dans create_app)
+Templates   : app/templates/employees/
+
+Couvre les pages :
+  - Liste des employés (avec recherche et filtres)
+  - Détail d'un employé (infos perso, pro, contrats)
+  - Création / édition d'un employé
+  - Organigramme (vue arborescente par département)
 """
 from flask import Blueprint
 
 bp: Blueprint = Blueprint(
     "employees",
     __name__,
-    template_folder="templates",  # templates/employees/
-    static_folder=None,
+    template_folder="templates",
 )
 
-# Import des routes — doit rester en bas pour éviter les imports circulaires
-from . import routes  # noqa: F401, E402
+from . import routes  # noqa: E402, F401

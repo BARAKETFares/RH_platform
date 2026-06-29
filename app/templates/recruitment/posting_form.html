@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block page_actions %}
+{% if posting %}
+<a href="{{ url_for('recruitment.posting_detail', posting_id=posting.id) }}"
+   class="btn btn-outline-secondary">
+  ← Retour à l'offre
+</a>
+{% else %}
+<a href="{{ url_for('recruitment.list_postings') }}"
+   class="btn btn-outline-secondary">
+  ← Retour aux offres
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  {# ── Formulaire principal ──────────────────────────────────────────── #}
+  <div class="col-lg-8">
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+
+      {# Intitulé #}
+      <div class="card mb-3">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-briefcase me-2"></i>Description du poste
+        </div>
+        <div class="card-body">
+
+          <div class="mb-3">
+            {{ form.title.label(class="form-label fw-medium") }}
+            {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else "")) }}
+            {% for err in form.title.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ form.description.label(class="form-label fw-medium") }}
+            {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else "")) }}
+            {% for err in form.description.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-0">
+            {{ form.requirements.label(class="form-label fw-medium") }}
+            {{ form.requirements(class="form-control" + (" is-invalid" if form.requirements.errors else "")) }}
+            {% for err in form.requirements.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+        </div>
+      </div>
+
+      {# Informations contractuelles #}
+      <div class="card mb-3">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-file-earmark-text me-2"></i>Conditions du poste
+        </div>
+        <div class="card-body">
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.location.label(class="form-label fw-medium") }}
+              {{ form.location(class="form-control" + (" is-invalid" if form.location.errors else "")) }}
+              {% for err in form.location.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.contract_type.label(class="form-label fw-medium") }}
+              {{ form.contract_type(class="form-select" + (" is-invalid" if form.contract_type.errors else "")) }}
+              {% for err in form.contract_type.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-5">
+              {{ form.salary_min.label(class="form-label fw-medium") }}
+              <div class="input-group">
+                {{ form.salary_min(class="form-control" + (" is-invalid" if form.salary_min.errors else ""),
+                                   placeholder="Ex : 42000") }}
+                <span class="input-group-text">€</span>
+              </div>
+              {% for err in form.salary_min.errors %}
+                <div class="text-danger small mt-1">{{ err }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-5">
+              {{ form.salary_max.label(class="form-label fw-medium") }}
+              <div class="input-group">
+                {{ form.salary_max(class="form-control" + (" is-invalid" if form.salary_max.errors else ""),
+                                   placeholder="Ex : 52000") }}
+                <span class="input-group-text">€</span>
+              </div>
+              {% for err in form.salary_max.errors %}
+                <div class="text-danger small mt-1">{{ err }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-2">
+              {{ form.headcount.label(class="form-label fw-medium") }}
+              {{ form.headcount(class="form-control text-center" + (" is-invalid" if form.headcount.errors else ""),
+                                min=1) }}
+              {% for err in form.headcount.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-0">
+            <div class="col-md-6">
+              {{ form.closing_date.label(class="form-label fw-medium") }}
+              {{ form.closing_date(class="form-control" + (" is-invalid" if form.closing_date.errors else ""),
+                                   type="date") }}
+              {% for err in form.closing_date.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {# Organisation #}
+      <div class="card mb-4">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-diagram-2 me-2"></i>Rattachement organisationnel
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              {{ form.department_id.label(class="form-label fw-medium") }}
+              {{ form.department_id(class="form-select" + (" is-invalid" if form.department_id.errors else "")) }}
+              {% for err in form.department_id.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.position_id.label(class="form-label fw-medium") }}
+              {{ form.position_id(class="form-select" + (" is-invalid" if form.position_id.errors else "")) }}
+              {% for err in form.position_id.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Actions #}
+      <div class="d-flex gap-2">
+        {{ form.submit(class="btn btn-primary") }}
+        {% if posting %}
+        <a href="{{ url_for('recruitment.posting_detail', posting_id=posting.id) }}"
+           class="btn btn-outline-secondary">Annuler</a>
+        {% else %}
+        <a href="{{ url_for('recruitment.list_postings') }}"
+           class="btn btn-outline-secondary">Annuler</a>
+        {% endif %}
+      </div>
+
+    </form>
+  </div>
+
+  {# ── Panneau latéral ───────────────────────────────────────────────── #}
+  <div class="col-lg-4">
+
+    {% if posting %}
+    <div class="card mb-3">
+      <div class="card-header fw-semibold small text-muted">État de l'offre</div>
+      <div class="card-body">
+        {% if posting.status == 'open' %}
+          <span class="badge bg-success">Ouverte</span>
+        {% elif posting.status == 'draft' %}
+          <span class="badge bg-secondary">Brouillon</span>
+        {% elif posting.status == 'closed' %}
+          <span class="badge bg-warning text-dark">Clôturée</span>
+        {% else %}
+          <span class="badge bg-danger">Annulée</span>
+        {% endif %}
+        <div class="text-muted small mt-2">
+          {{ posting.application_count }} candidature{{ 's' if posting.application_count != 1 else '' }}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card border-0 bg-light">
+      <div class="card-body small text-muted">
+        <p class="fw-semibold text-dark mb-2">
+          <i class="bi bi-info-circle me-1"></i>Conseils
+        </p>
+        <ul class="ps-3 mb-0">
+          <li>L'offre est créée en <strong>brouillon</strong>. Publiez-la depuis sa fiche pour recevoir des candidatures.</li>
+          <li>La fourchette salariale est optionnelle mais améliore la qualité des candidatures.</li>
+          <li>La date limite est informative ; elle n'empêche pas les candidatures passé ce délai.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

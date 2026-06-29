@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}{{ training.title }}{% endblock %}
+{% block page_title %}{{ training.title }}{% endblock %}
+
+{% block page_actions %}
+{% set role = current_user.role.name if current_user.role else '' %}
+{% if role in ['admin', 'rh'] %}
+<a href="{{ url_for('training.edit_training', training_id=training.id) }}"
+   class="btn btn-outline-secondary me-2">
+  <i class="bi bi-pencil me-1"></i>Modifier
+</a>
+<form method="POST"
+      action="{{ url_for('training.toggle_training', training_id=training.id) }}"
+      class="d-inline me-2">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button type="submit"
+          class="btn {{ 'btn-outline-warning' if training.is_active else 'btn-outline-success' }}">
+    <i class="bi bi-{{ 'pause-circle' if training.is_active else 'play-circle' }} me-1"></i>
+    {{ 'Désactiver' if training.is_active else 'Activer' }}
+  </button>
+</form>
+{% endif %}
+{% if training.is_active %}
+<a href="{{ url_for('training.enroll', training_id=training.id) }}" class="btn btn-primary">
+  <i class="bi bi-person-plus me-1"></i>S'inscrire
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  {# ── Colonne principale ────────────────────────────────────────────── #}
+  <div class="col-lg-8">
+
+    {# Fiche formation #}
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">
+          {% if training.training_type == 'presentiel' %}
+            <span class="badge bg-primary-subtle text-primary-emphasis me-2">
+              <i class="bi bi-building me-1"></i>Présentiel
+            </span>
+          {% elif training.training_type == 'distanciel' %}
+            <span class="badge bg-info-subtle text-info-emphasis me-2">
+              <i class="bi bi-camera-video me-1"></i>Distanciel
+            </span>
+          {% else %}
+            <span class="badge bg-success-subtle text-success-emphasis me-2">
+              <i class="bi bi-laptop me-1"></i>E-learning
+            </span>
+          {% endif %}
+          Informations
+        </span>
+        {% if not training.is_active %}
+        <span class="badge bg-secondary">Inactive</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+
+          {% if training.organisme %}
+          <dt class="col-4 text-muted small">Organisme</dt>
+          <dd class="col-8">{{ training.organisme }}</dd>
+          {% endif %}
+
+          {% if training.duration_hours %}
+          <dt class="col-4 text-muted small">Durée</dt>
+          <dd class="col-8">{{ training.duration_hours }} h</dd>
+          {% endif %}
+
+          {% if training.cost is not none %}
+          <dt class="col-4 text-muted small">Coût unitaire</dt>
+          <dd class="col-8">{{ "%.0f"|format(training.cost) }} € HT</dd>
+          {% endif %}
+
+          <dt class="col-4 text-muted small">Inscrits actifs</dt>
+          <dd class="col-8">{{ training.active_enrollment_count }}</dd>
+
+          <dt class="col-4 text-muted small">Ajoutée le</dt>
+          <dd class="col-8 text-muted small">{{ training.created_at.strftime('%d/%m/%Y') }}</dd>
+
+        </dl>
+
+        {% if training.description %}
+        <hr>
+        <h6 class="fw-semibold mb-2">Description / Programme</h6>
+        <p class="text-muted small mb-0">{{ training.description }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Liste des inscriptions #}
+    <div class="card">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-people me-2"></i>
+        {% if is_privileged %}Inscriptions{% else %}Mes inscriptions{% endif %}
+        <span class="badge bg-secondary ms-2">{{ enrollments | length }}</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              {% if is_privileged %}<th>Employé</th>{% endif %}
+              <th>Statut</th>
+              <th>Période</th>
+              <th>Note</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in enrollments %}
+            <tr>
+              {% if is_privileged %}
+              <td>{{ e.employee.full_name }}</td>
+              {% endif %}
+              <td>
+                {% if e.status == 'planifiee' %}
+                  <span class="badge bg-secondary">Planifiée</span>
+                {% elif e.status == 'en_cours' %}
+                  <span class="badge bg-warning text-dark">En cours</span>
+                {% elif e.status == 'terminee' %}
+                  <span class="badge bg-success">Terminée</span>
+                {% else %}
+                  <span class="badge bg-danger">Annulée</span>
+                {% endif %}
+              </td>
+              <td class="text-muted small">
+                {{ e.start_date.strftime('%d/%m/%Y') if e.start_date else '—' }}
+                {% if e.end_date %} → {{ e.end_date.strftime('%d/%m/%Y') }}{% endif %}
+              </td>
+              <td>
+                {% if e.score is not none %}
+                  <span class="{{ 'text-success' if e.is_passed else 'text-danger' }} fw-semibold">
+                    {{ "%.0f"|format(e.score) }}/100
+                  </span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{{ url_for('training.enrollment_detail', enrollment_id=e.id) }}"
+                   class="btn btn-sm btn-outline-primary">Détail</a>
+                {# FIX A-4 : toujours autorisé car A-1 est corrigé côté route #}
+              {% if e.status in ('planifiee', 'en_cours') %}
+              <button type="button" class="btn btn-sm btn-outline-secondary"
+                      data-bs-toggle="modal"
+                      data-bs-target="#statusModal{{ e.id }}">
+                <i class="bi bi-arrow-repeat"></i>
+              </button>
+              {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="{{ 5 if is_privileged else 4 }}" class="text-center text-muted py-4">
+                <i class="bi bi-people fs-3 d-block mb-2 opacity-25"></i>
+                Aucune inscription pour le moment.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Colonne latérale ──────────────────────────────────────────────── #}
+  <div class="col-lg-4">
+
+    <div class="card mb-3 border-primary">
+      <div class="card-body">
+        <a href="{{ url_for('training.enroll', training_id=training.id) }}"
+           class="btn btn-primary w-100 mb-2">
+          <i class="bi bi-person-plus me-1"></i>S'inscrire / Inscrire un employé
+        </a>
+        <a href="{{ url_for('training.list_trainings_view') }}"
+           class="btn btn-outline-secondary w-100">
+          ← Retour au catalogue
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+{# ── Modales de changement de statut ──────────────────────────────── #}
+{% for e in enrollments %}
+{% if e.status in ('planifiee', 'en_cours') %}
+<div class="modal fade" id="statusModal{{ e.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST"
+            action="{{ url_for('training.update_enrollment_status_view', enrollment_id=e.id) }}"
+            novalidate>
+        {{ status_form.hidden_tag() }}
+        <div class="modal-header">
+          <h5 class="modal-title">
+            Mettre à jour — {{ e.employee.full_name if is_privileged else 'Mon inscription' }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-medium">Nouveau statut</label>
+            <select name="status" class="form-select" required>
+              {% if e.status == 'planifiee' %}
+                <option value="en_cours">En cours</option>
+                <option value="annulee">Annulée</option>
+              {% elif e.status == 'en_cours' %}
+                <option value="terminee">Terminée</option>
+                <option value="annulee">Annulée</option>
+              {% endif %}
+            </select>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label small fw-medium">Date début</label>
+              <input type="date" name="start_date" class="form-control form-control-sm"
+                     value="{{ e.start_date.strftime('%Y-%m-%d') if e.start_date else '' }}">
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-medium">Date fin</label>
+              <input type="date" name="end_date" class="form-control form-control-sm"
+                     value="{{ e.end_date.strftime('%Y-%m-%d') if e.end_date else '' }}">
+            </div>
+          </div>
+          {% if e.status == 'en_cours' %}
+          <div class="mb-2">
+            <label class="form-label small fw-medium">Note finale (0–100)</label>
+            <input type="number" name="score" class="form-control form-control-sm"
+                   min="0" max="100" step="0.5">
+          </div>
+          <div class="mb-1">
+            <label class="form-label small fw-medium">Commentaire</label>
+            <textarea name="final_comment" class="form-control form-control-sm" rows="2"></textarea>
+          </div>
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% endblock %}

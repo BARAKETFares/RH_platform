@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+{% block title %}Bulletin {{ payslip.period_label }} — {{ payslip.employee.full_name }}{% endblock %}
+{% block page_title %}Bulletin — {{ payslip.period_label }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('payroll.print_payslip', payslip_id=payslip.id) }}"
+   class="btn btn-outline-secondary" target="_blank">
+  <i class="bi bi-printer me-1"></i>Imprimer
+</a>
+{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('reporting.dashboard') }}">Tableau de bord</a></li>
+    {% if can_manage %}
+    <li class="breadcrumb-item"><a href="{{ url_for('payroll.list_payslips_route') }}">Bulletins de paie</a></li>
+    {% else %}
+    <li class="breadcrumb-item"><a href="{{ url_for('payroll.my_payslips') }}">Mes bulletins</a></li>
+    {% endif %}
+    <li class="breadcrumb-item active">{{ payslip.period_label }}</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+
+{% set status_color = {'draft': 'warning', 'validated': 'info', 'paid': 'success'} %}
+{% set sc = status_color.get(payslip.status, 'secondary') %}
+
+{# ── KPIs ─────────────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Salaire brut</div>
+        <div class="fs-4 fw-bold text-dark font-monospace">
+          {{ '{:,.2f}'.format(payslip.gross_salary | float).replace(',', ' ') }} €
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Cotisations sal.</div>
+        <div class="fs-4 fw-bold text-danger font-monospace">
+          − {{ '{:,.2f}'.format(payslip.total_employee_contributions | float).replace(',', ' ') }} €
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100 border-success">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Net à payer</div>
+        <div class="fs-4 fw-bold text-success font-monospace">
+          {{ '{:,.2f}'.format(payslip.net_salary | float).replace(',', ' ') }} €
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Coût employeur</div>
+        <div class="fs-4 fw-bold text-secondary font-monospace">
+          {{ '{:,.2f}'.format((payslip.gross_salary | float) + (payslip.total_employer_contributions | float)).replace(',', ' ') }} €
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+
+    {# ── Lignes salariales ────────────────────────────────────────────── #}
+    {% if bonuses %}
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-plus-circle text-success me-2"></i>Primes et indemnités
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Libellé</th>
+              <th class="text-end">Montant</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in bonuses %}
+            <tr>
+              <td>{{ e.label }}</td>
+              <td class="text-end font-monospace text-success">
+                + {{ '{:,.2f}'.format(e.amount | float).replace(',', ' ') }} €
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if deductions %}
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-dash-circle text-danger me-2"></i>Retenues
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Libellé</th>
+              <th class="text-end">Montant</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in deductions %}
+            <tr>
+              <td>{{ e.label }}</td>
+              <td class="text-end font-monospace text-danger">
+                − {{ '{:,.2f}'.format(e.amount | float).replace(',', ' ') }} €
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Cotisations ──────────────────────────────────────────────────── #}
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-receipt me-2"></i>Cotisations sociales
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Nature</th>
+              <th class="text-end">Taux sal.</th>
+              <th class="text-end text-danger">Part salariale</th>
+              <th class="text-end">Taux pat.</th>
+              <th class="text-end text-secondary">Part patronale</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set emp_by_label = {} %}
+            {% for e in employee_contributions %}{% set _ = emp_by_label.update({e.label: e}) %}{% endfor %}
+            {% set pat_by_label = {} %}
+            {% for e in employer_contributions %}{% set _ = pat_by_label.update({e.label: e}) %}{% endfor %}
+            {% set all_labels = (employee_contributions + employer_contributions) | map(attribute='label') | unique | list %}
+            {% for label in all_labels %}
+            {% set emp = emp_by_label.get(label) %}
+            {% set pat = pat_by_label.get(label) %}
+            <tr>
+              <td>{{ label }}</td>
+              <td class="text-end text-muted small">
+                {% if emp %}{{ emp.rate | float }}%{% else %}—{% endif %}
+              </td>
+              <td class="text-end font-monospace text-danger small">
+                {% if emp %}− {{ '{:,.2f}'.format(emp.amount | float).replace(',', ' ') }} €{% else %}—{% endif %}
+              </td>
+              <td class="text-end text-muted small">
+                {% if pat %}{{ pat.rate | float }}%{% else %}—{% endif %}
+              </td>
+              <td class="text-end font-monospace text-secondary small">
+                {% if pat %}{{ '{:,.2f}'.format(pat.amount | float).replace(',', ' ') }} €{% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-light fw-semibold">
+            <tr>
+              <td colspan="2">Total</td>
+              <td class="text-end font-monospace text-danger">
+                − {{ '{:,.2f}'.format(payslip.total_employee_contributions | float).replace(',', ' ') }} €
+              </td>
+              <td></td>
+              <td class="text-end font-monospace text-secondary">
+                {{ '{:,.2f}'.format(payslip.total_employer_contributions | float).replace(',', ' ') }} €
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    {# ── Ajout d'une ligne manuelle (draft seulement) ─────────────────── #}
+    {% if can_manage and payslip.status == 'draft' %}
+    <div class="card mb-4 border-primary">
+      <div class="card-header bg-primary-subtle fw-semibold">
+        <i class="bi bi-plus-lg me-2"></i>Ajouter une ligne manuelle
+      </div>
+      <div class="card-body">
+        <form method="POST"
+              action="{{ url_for('payroll.add_element_route', payslip_id=payslip.id) }}"
+              novalidate>
+          {{ add_elem_form.hidden_tag() }}
+          <div class="row g-3">
+            <div class="col-md-3">
+              {{ add_elem_form.element_type.label(class="form-label fw-medium small") }}
+              {{ add_elem_form.element_type(class="form-select form-select-sm") }}
+            </div>
+            <div class="col-md-5">
+              {{ add_elem_form.label.label(class="form-label fw-medium small") }}
+              {{ add_elem_form.label(class="form-control form-control-sm") }}
+            </div>
+            <div class="col-md-4">
+              {{ add_elem_form.amount.label(class="form-label fw-medium small") }}
+              <div class="input-group input-group-sm">
+                {{ add_elem_form.amount(class="form-control") }}
+                <span class="input-group-text">€</span>
+              </div>
+            </div>
+            <div class="col-md-3">
+              {{ add_elem_form.rate.label(class="form-label fw-medium small") }}
+              <div class="input-group input-group-sm">
+                {{ add_elem_form.rate(class="form-control") }}
+                <span class="input-group-text">%</span>
+              </div>
+            </div>
+            <div class="col-md-3">
+              {{ add_elem_form.base_amount.label(class="form-label fw-medium small") }}
+              <div class="input-group input-group-sm">
+                {{ add_elem_form.base_amount(class="form-control") }}
+                <span class="input-group-text">€</span>
+              </div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <div class="form-check mb-2">
+                {{ add_elem_form.is_employer(class="form-check-input") }}
+                {{ add_elem_form.is_employer.label(class="form-check-label small") }}
+              </div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              {{ add_elem_form.submit(class="btn btn-primary btn-sm w-100") }}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>{# col-lg-8 #}
+
+  <div class="col-lg-4">
+
+    {# ── Informations du bulletin ──────────────────────────────────────── #}
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">Informations</div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-5 text-muted">Employé</dt>
+          <dd class="col-7 fw-medium">{{ payslip.employee.full_name }}</dd>
+
+          <dt class="col-5 text-muted">Période</dt>
+          <dd class="col-7">{{ payslip.period_label }}</dd>
+
+          {% if payslip.contract %}
+          <dt class="col-5 text-muted">Contrat ref.</dt>
+          <dd class="col-7">{{ payslip.contract.contract_type.name }}</dd>
+          {% endif %}
+
+          <dt class="col-5 text-muted">Statut</dt>
+          <dd class="col-7">
+            <span class="badge bg-{{ sc }}-subtle text-{{ sc }} border border-{{ sc }}-subtle">
+              {{ payslip.status_label }}
+            </span>
+          </dd>
+
+          {% if payslip.validated_at %}
+          <dt class="col-5 text-muted">Validé le</dt>
+          <dd class="col-7">{{ payslip.validated_at.strftime('%d/%m/%Y') }}</dd>
+          {% endif %}
+
+          {% if payslip.paid_at %}
+          <dt class="col-5 text-muted">Payé le</dt>
+          <dd class="col-7">{{ payslip.paid_at.strftime('%d/%m/%Y') }}</dd>
+          {% endif %}
+
+          {% if payslip.payment_reference %}
+          <dt class="col-5 text-muted">Référence</dt>
+          <dd class="col-7 font-monospace">{{ payslip.payment_reference }}</dd>
+          {% endif %}
+
+          {% if payslip.notes %}
+          <dt class="col-5 text-muted">Notes</dt>
+          <dd class="col-7 text-muted">{{ payslip.notes }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+
+    {# ── Actions workflow ─────────────────────────────────────────────── #}
+    {% if can_manage %}
+
+    {% if payslip.status == 'draft' %}
+    <div class="card mb-3 border-warning">
+      <div class="card-header bg-warning-subtle fw-semibold text-warning-emphasis">
+        <i class="bi bi-check2-circle me-2"></i>Valider le bulletin
+      </div>
+      <div class="card-body">
+        <p class="small text-muted mb-3">
+          La validation confirme les montants. Le bulletin devient accessible à l'employé.
+        </p>
+        <form method="POST"
+              action="{{ url_for('payroll.validate_payslip_route', payslip_id=payslip.id) }}">
+          {{ validate_form.hidden_tag() }}
+          <button type="submit" class="btn btn-warning w-100"
+                  onclick="return confirm('Valider ce bulletin ?')">
+            <i class="bi bi-check2-circle me-1"></i>Valider
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if payslip.status == 'validated' %}
+    <div class="card mb-3 border-success">
+      <div class="card-header bg-success-subtle fw-semibold text-success-emphasis">
+        <i class="bi bi-bank me-2"></i>Marquer comme payé
+      </div>
+      <div class="card-body">
+        <form method="POST"
+              action="{{ url_for('payroll.pay_payslip_route', payslip_id=payslip.id) }}">
+          {{ pay_form.hidden_tag() }}
+          <div class="mb-3">
+            <label class="form-label fw-medium small">Référence virement (optionnelle)</label>
+            <input type="text" name="payment_reference" class="form-control form-control-sm"
+                   placeholder="VIR-2025-06-001">
+          </div>
+          <button type="submit" class="btn btn-success w-100"
+                  onclick="return confirm('Confirmer le paiement de ce bulletin ?')">
+            <i class="bi bi-bank me-1"></i>Confirmer le paiement
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if payslip.status == 'paid' %}
+    <div class="card mb-3 border-success">
+      <div class="card-body text-center py-4">
+        <i class="bi bi-check-circle-fill text-success fs-1"></i>
+        <div class="fw-semibold mt-2">Bulletin payé</div>
+        {% if payslip.paid_at %}
+        <div class="text-muted small">le {{ payslip.paid_at.strftime('%d/%m/%Y') }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% endif %}{# can_manage #}
+
+  </div>{# col-lg-4 #}
+</div>
+
+{% endblock %}

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bulletin de paie — {{ payslip.period_label }} — {{ payslip.employee.full_name }}</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+        crossorigin="anonymous">
+  <style>
+    body { font-size: 13px; color: #212529; }
+
+    .payslip-header { border-bottom: 2px solid #212529; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+    .payslip-footer { border-top: 2px solid #212529; padding-top: 1rem; margin-top: 1.5rem; }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #6c757d;
+      border-bottom: 1px solid #dee2e6;
+      padding-bottom: 4px;
+      margin-bottom: 10px;
+    }
+
+    table.payslip-table { font-size: 12px; }
+    table.payslip-table th { font-weight: 600; background: #f8f9fa; }
+    table.payslip-table tfoot td { font-weight: 700; background: #e9ecef; }
+
+    .net-box {
+      background: #198754;
+      color: #fff;
+      border-radius: 6px;
+      padding: 1rem 1.5rem;
+      text-align: center;
+    }
+    .net-box .label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; opacity: .85; }
+    .net-box .amount { font-size: 1.8rem; font-weight: 700; font-family: monospace; }
+
+    .btn-print { position: fixed; top: 1rem; right: 1rem; z-index: 999; }
+
+    @media print {
+      .btn-print { display: none !important; }
+      body { font-size: 11px; }
+      .net-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      table.payslip-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .payslip-wrapper { max-width: 100% !important; padding: 0 !important; }
+    }
+  </style>
+</head>
+<body class="bg-white">
+
+<button class="btn btn-sm btn-outline-secondary btn-print" onclick="window.print()">
+  &#128438; Imprimer / PDF
+</button>
+
+<div class="payslip-wrapper mx-auto py-4 px-4" style="max-width: 820px;">
+
+  {# ── En-tête ─────────────────────────────────────────────────────────── #}
+  <div class="payslip-header row align-items-start">
+    <div class="col-7">
+      <div class="fw-bold fs-5">{{ config.APP_NAME }}</div>
+      {% if payslip.employee.company %}
+      <div class="text-muted">{{ payslip.employee.company.name }}</div>
+      {% endif %}
+    </div>
+    <div class="col-5 text-end">
+      <div class="fw-bold fs-5">Bulletin de paie</div>
+      <div class="text-muted">{{ payslip.period_label }}</div>
+      <div class="mt-1">
+        {% if payslip.status == 'paid' %}
+        <span style="color:#198754;font-weight:600;">✓ Payé</span>
+        {% elif payslip.status == 'validated' %}
+        <span style="color:#0dcaf0;font-weight:600;">Validé</span>
+        {% else %}
+        <span style="color:#ffc107;font-weight:600;">Brouillon</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Informations employé ─────────────────────────────────────────────── #}
+  <div class="row g-4 mb-4">
+    <div class="col-6">
+      <div class="section-title">Employé</div>
+      <table class="table table-borderless table-sm mb-0" style="font-size:12px;">
+        <tr>
+          <td class="text-muted pe-3" style="width:40%">Nom</td>
+          <td class="fw-medium">{{ payslip.employee.full_name }}</td>
+        </tr>
+        {% if payslip.employee.employee_number %}
+        <tr>
+          <td class="text-muted">Matricule</td>
+          <td class="font-monospace">{{ payslip.employee.employee_number }}</td>
+        </tr>
+        {% endif %}
+        {% if payslip.employee.position %}
+        <tr>
+          <td class="text-muted">Poste</td>
+          <td>{{ payslip.employee.position.title }}</td>
+        </tr>
+        {% endif %}
+        {% if payslip.employee.department %}
+        <tr>
+          <td class="text-muted">Département</td>
+          <td>{{ payslip.employee.department.name }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+          <td class="text-muted">Embauche</td>
+          <td>{{ payslip.employee.hire_date.strftime('%d/%m/%Y') }}</td>
+        </tr>
+      </table>
+    </div>
+    <div class="col-6">
+      <div class="section-title">Contrat</div>
+      <table class="table table-borderless table-sm mb-0" style="font-size:12px;">
+        {% if payslip.contract %}
+        <tr>
+          <td class="text-muted pe-3" style="width:40%">Type</td>
+          <td>{{ payslip.contract.contract_type.name }}</td>
+        </tr>
+        <tr>
+          <td class="text-muted">Début</td>
+          <td>{{ payslip.contract.start_date.strftime('%d/%m/%Y') }}</td>
+        </tr>
+        <tr>
+          <td class="text-muted">Heures / sem.</td>
+          <td>{{ payslip.contract.weekly_hours }} h</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2" class="text-muted fst-italic">Aucun contrat référencé</td></tr>
+        {% endif %}
+        <tr>
+          <td class="text-muted">Période</td>
+          <td class="fw-semibold">{{ payslip.period_label }}</td>
+        </tr>
+        {% if payslip.payment_reference %}
+        <tr>
+          <td class="text-muted">Référence</td>
+          <td class="font-monospace">{{ payslip.payment_reference }}</td>
+        </tr>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+
+  {# ── Primes et indemnités ─────────────────────────────────────────────── #}
+  {% if bonuses %}
+  <div class="mb-4">
+    <div class="section-title">Primes et indemnités</div>
+    <table class="table table-sm table-bordered payslip-table mb-0">
+      <thead>
+        <tr>
+          <th>Libellé</th>
+          <th class="text-end">Montant</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in bonuses %}
+        <tr>
+          <td>{{ e.label }}</td>
+          <td class="text-end font-monospace">
+            + {{ '{:,.2f}'.format(e.amount | float).replace(',', ' ') }} €
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {# ── Retenues ─────────────────────────────────────────────────────────── #}
+  {% if deductions %}
+  <div class="mb-4">
+    <div class="section-title">Retenues</div>
+    <table class="table table-sm table-bordered payslip-table mb-0">
+      <thead>
+        <tr>
+          <th>Libellé</th>
+          <th class="text-end">Montant</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in deductions %}
+        <tr>
+          <td>{{ e.label }}</td>
+          <td class="text-end font-monospace">
+            − {{ '{:,.2f}'.format(e.amount | float).replace(',', ' ') }} €
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {# ── Cotisations sociales ─────────────────────────────────────────────── #}
+  <div class="mb-4">
+    <div class="section-title">Cotisations sociales</div>
+    <table class="table table-sm table-bordered payslip-table mb-0">
+      <thead>
+        <tr>
+          <th style="width:36%">Nature</th>
+          <th class="text-end" style="width:12%">Taux sal.</th>
+          <th class="text-end" style="width:18%">Part salariale</th>
+          <th class="text-end" style="width:12%">Taux pat.</th>
+          <th class="text-end" style="width:22%">Part patronale</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set emp_map = {} %}
+        {% for e in employee_contributions %}{% set _ = emp_map.update({e.label: e}) %}{% endfor %}
+        {% set pat_map = {} %}
+        {% for e in employer_contributions %}{% set _ = pat_map.update({e.label: e}) %}{% endfor %}
+        {% set all_labels = (employee_contributions + employer_contributions) | map(attribute='label') | unique | list %}
+        {% for label in all_labels %}
+        {% set emp = emp_map.get(label) %}
+        {% set pat = pat_map.get(label) %}
+        <tr>
+          <td>{{ label }}</td>
+          <td class="text-end text-muted">{% if emp %}{{ emp.rate | float }}%{% else %}—{% endif %}</td>
+          <td class="text-end font-monospace">
+            {% if emp %}− {{ '{:,.2f}'.format(emp.amount | float).replace(',', ' ') }} €{% else %}—{% endif %}
+          </td>
+          <td class="text-end text-muted">{% if pat %}{{ pat.rate | float }}%{% else %}—{% endif %}</td>
+          <td class="text-end font-monospace text-muted">
+            {% if pat %}{{ '{:,.2f}'.format(pat.amount | float).replace(',', ' ') }} €{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2">Total cotisations</td>
+          <td class="text-end font-monospace">
+            − {{ '{:,.2f}'.format(payslip.total_employee_contributions | float).replace(',', ' ') }} €
+          </td>
+          <td></td>
+          <td class="text-end font-monospace">
+            {{ '{:,.2f}'.format(payslip.total_employer_contributions | float).replace(',', ' ') }} €
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  {# ── Récapitulatif net ────────────────────────────────────────────────── #}
+  <div class="row align-items-center mb-5">
+    <div class="col-7">
+      <table class="table table-sm table-bordered payslip-table mb-0">
+        <tbody>
+          <tr>
+            <td class="text-muted">Salaire brut mensuel</td>
+            <td class="text-end font-monospace fw-semibold">
+              {{ '{:,.2f}'.format(payslip.gross_salary | float).replace(',', ' ') }} €
+            </td>
+          </tr>
+          <tr>
+            <td class="text-muted">Cotisations salariales</td>
+            <td class="text-end font-monospace">
+              − {{ '{:,.2f}'.format(payslip.total_employee_contributions | float).replace(',', ' ') }} €
+            </td>
+          </tr>
+          <tr>
+            <td class="text-muted small">Coût total employeur</td>
+            <td class="text-end font-monospace text-muted small">
+              {{ '{:,.2f}'.format((payslip.gross_salary | float) + (payslip.total_employer_contributions | float)).replace(',', ' ') }} €
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col-5">
+      <div class="net-box">
+        <div class="label">Net à payer</div>
+        <div class="amount">
+          {{ '{:,.2f}'.format(payslip.net_salary | float).replace(',', ' ') }} €
+        </div>
+        {% if payslip.paid_at %}
+        <div class="mt-1" style="font-size:11px;opacity:.85;">
+          Versé le {{ payslip.paid_at.strftime('%d/%m/%Y') }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Pied de page / signatures ────────────────────────────────────────── #}
+  <div class="payslip-footer row">
+    <div class="col-12 mb-3 text-muted" style="font-size:10px;">
+      Bulletin de paie simplifié généré par {{ config.APP_NAME }}.
+      Les cotisations sont calculées sur la base d'un barème simplifié (France 2024).
+      Ce document ne se substitue pas à un bulletin légal certifié.
+      À conserver sans limitation de durée.
+    </div>
+    <div class="col-6">
+      <div class="section-title">Signature employeur</div>
+      <div style="height:60px; border-bottom:1px solid #adb5bd;"></div>
+    </div>
+    <div class="col-6 text-end">
+      <div class="section-title">Accusé de réception employé</div>
+      <div style="height:60px; border-bottom:1px solid #adb5bd;"></div>
+      <div class="text-muted" style="font-size:10px;">Date et signature</div>
+    </div>
+  </div>
+
+</div>{# payslip-wrapper #}
+
+</body>
+</html>

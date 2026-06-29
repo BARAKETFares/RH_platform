@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% block title %}{{ application.candidate.full_name }} — Candidature{% endblock %}
+{% block page_title %}{{ application.candidate.full_name }}{% endblock %}
+
+{% block page_actions %}
+<div class="d-flex gap-2">
+  {% if application.status == 'entretien' and role_name in ['admin', 'rh'] %}
+  <a href="{{ url_for('recruitment.schedule_interview_view', application_id=application.id) }}"
+     class="btn btn-warning text-dark">
+    <i class="bi bi-calendar-plus me-1"></i>Planifier un entretien
+  </a>
+  {% endif %}
+  <a href="{{ url_for('recruitment.posting_detail', posting_id=application.job_posting_id) }}"
+     class="btn btn-outline-secondary">
+    ← Retour à l'offre
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{# ── Pipeline statut ───────────────────────────────────────────────────── #}
+{% set pipeline = ['recue', 'preselectionnee', 'entretien', 'offre', 'embauchee'] %}
+{% set is_refused = application.status == 'refusee' %}
+<div class="card mb-4 border-0 bg-light">
+  <div class="card-body py-3">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+      {% if is_refused %}
+      <span class="badge bg-danger px-3 py-2 fs-6">
+        <i class="bi bi-x-circle me-1"></i>Refusée
+      </span>
+      {% if application.rejection_reason %}
+      <span class="text-muted small fst-italic">Motif : {{ application.rejection_reason }}</span>
+      {% endif %}
+      {% else %}
+      {% for step in pipeline %}
+      <div class="d-flex align-items-center gap-1">
+        <span class="badge px-3 py-2
+          {% if application.status == step %}bg-primary
+          {% elif pipeline.index(step) < pipeline.index(application.status) %}bg-success
+          {% else %}bg-light text-muted border{% endif %}">
+          {{ STATUS_LABELS[step] }}
+        </span>
+        {% if not loop.last %}
+        <i class="bi bi-chevron-right text-muted small"></i>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  {# ── Colonne gauche — Candidat + offre ─────────────────────────────── #}
+  <div class="col-lg-4">
+
+    {# Candidat #}
+    <div class="card mb-3">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-person me-2"></i>Candidat
+      </div>
+      <div class="card-body">
+        <dl class="mb-0 small">
+          <dt class="text-muted">Nom complet</dt>
+          <dd class="fw-semibold">{{ application.candidate.full_name }}</dd>
+
+          <dt class="text-muted">E-mail</dt>
+          <dd>
+            <a href="mailto:{{ application.candidate.email }}" class="text-decoration-none">
+              {{ application.candidate.email }}
+            </a>
+          </dd>
+
+          {% if application.candidate.phone %}
+          <dt class="text-muted">Téléphone</dt>
+          <dd>{{ application.candidate.phone }}</dd>
+          {% endif %}
+
+          <dt class="text-muted">Source</dt>
+          <dd>
+            {% set source_labels = {
+                'linkedin': 'LinkedIn', 'jobboard': 'Job board',
+                'referral': 'Cooptation', 'spontaneous': 'Candidature spontanée',
+                'website': 'Site carrières', 'other': 'Autre'
+            } %}
+            {{ source_labels.get(application.candidate.source, application.candidate.source) }}
+          </dd>
+
+          <dt class="text-muted">Reçue le</dt>
+          <dd>{{ application.applied_at.strftime('%d/%m/%Y') if application.applied_at else '—' }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    {# Offre #}
+    <div class="card mb-3">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-briefcase me-2"></i>Offre d'emploi
+      </div>
+      <div class="card-body small">
+        <a href="{{ url_for('recruitment.posting_detail', posting_id=application.job_posting_id) }}"
+           class="fw-semibold text-decoration-none">
+          {{ application.job_posting.title }}
+        </a>
+        {% if application.job_posting.department %}
+        <div class="text-muted mt-1">{{ application.job_posting.department.name }}</div>
+        {% endif %}
+        {% if application.job_posting.location %}
+        <div class="text-muted">
+          <i class="bi bi-geo-alt me-1"></i>{{ application.job_posting.location }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Notes internes #}
+    {% if application.notes %}
+    <div class="card mb-3 border-start border-4 border-info">
+      <div class="card-body py-2 small">
+        <div class="text-muted fw-semibold mb-1">Notes internes</div>
+        {{ application.notes }}
+      </div>
+    </div>
+    {% endif %}
+
+    {# Employé embauché lié #}
+    {% if application.hired_employee %}
+    <div class="card border-success">
+      <div class="card-body py-2 small">
+        <div class="text-success fw-semibold mb-1">
+          <i class="bi bi-person-check me-1"></i>Fiche employé créée
+        </div>
+        <a href="{{ url_for('employees.detail', employee_id=application.hired_employee_id) }}"
+           class="text-decoration-none">
+          {{ application.hired_employee.full_name }}
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  {# ── Colonne droite — Actions + entretiens ─────────────────────────── #}
+  <div class="col-lg-8">
+
+    {# Bloc action RH — décision pipeline #}
+    {% if application.is_active and role_name in ['admin', 'rh'] and decision_form.status.choices %}
+    <div class="card mb-3 border-primary">
+      <div class="card-header fw-semibold text-primary-emphasis bg-primary-subtle">
+        <i class="bi bi-arrow-right-circle me-2"></i>Faire avancer la candidature
+      </div>
+      <div class="card-body">
+        <form method="POST"
+              action="{{ url_for('recruitment.update_application_decision', application_id=application.id) }}"
+              novalidate>
+          {{ decision_form.hidden_tag() }}
+          <div class="row g-3 align-items-end">
+            <div class="col-md-5">
+              {{ decision_form.status.label(class="form-label fw-medium small") }}
+              {{ decision_form.status(class="form-select form-select-sm" + (" is-invalid" if decision_form.status.errors else ""),
+                                     id="decisionStatus") }}
+              {% for err in decision_form.status.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-7">
+              {{ decision_form.notes.label(class="form-label fw-medium small") }}
+              {{ decision_form.notes(class="form-control form-control-sm" + (" is-invalid" if decision_form.notes.errors else ""),
+                                    rows=2) }}
+            </div>
+          </div>
+          <div id="rejectionReasonBlock" class="mt-3" style="display:none">
+            {{ decision_form.rejection_reason.label(class="form-label fw-medium small") }}
+            {{ decision_form.rejection_reason(class="form-control form-control-sm", rows=2) }}
+          </div>
+          <div class="mt-3">
+            {{ decision_form.submit(class="btn btn-primary btn-sm") }}
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {# Bloc embauche — créer la fiche employé #}
+    {% if employee_prefill and role_name in ['admin', 'rh'] %}
+    <div class="card mb-3 border-success">
+      <div class="card-header fw-semibold text-success-emphasis bg-success-subtle">
+        <i class="bi bi-person-add me-2"></i>Candidature acceptée — Créer la fiche employé
+      </div>
+      <div class="card-body">
+        <p class="small text-muted mb-3">
+          Ce candidat a été embauché. Créez sa fiche employé en utilisant les informations
+          pré-remplies depuis le dossier de candidature.
+        </p>
+        <dl class="row small mb-3">
+          <dt class="col-sm-4 text-muted">Prénom</dt>
+          <dd class="col-sm-8">{{ employee_prefill.get('first_name', '—') }}</dd>
+          <dt class="col-sm-4 text-muted">Nom</dt>
+          <dd class="col-sm-8">{{ employee_prefill.get('last_name', '—') }}</dd>
+          <dt class="col-sm-4 text-muted">E-mail</dt>
+          <dd class="col-sm-8">{{ employee_prefill.get('personal_email', '—') }}</dd>
+          {% if employee_prefill.get('phone') %}
+          <dt class="col-sm-4 text-muted">Téléphone</dt>
+          <dd class="col-sm-8">{{ employee_prefill['phone'] }}</dd>
+          {% endif %}
+        </dl>
+        <a href="{{ url_for('employees.new_employee') }}"
+           class="btn btn-success btn-sm">
+          <i class="bi bi-person-plus me-1"></i>Créer la fiche employé
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    {# CV du candidat #}
+    {% if application.candidate.cv_text %}
+    <div class="card mb-3">
+      <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-file-earmark-text me-2"></i>CV</span>
+        <button class="btn btn-sm btn-outline-secondary"
+                data-bs-toggle="collapse"
+                data-bs-target="#cvCollapse">
+          Afficher / Masquer
+        </button>
+      </div>
+      <div class="collapse" id="cvCollapse">
+        <div class="card-body small" style="white-space: pre-wrap; max-height: 400px; overflow-y: auto;">
+          {{ application.candidate.cv_text }}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Entretiens ─────────────────────────────────────────────────── #}
+    <div class="card">
+      <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-calendar2-check me-2"></i>Entretiens ({{ application.interview_count }})</span>
+        {% if application.status == 'entretien' and role_name in ['admin', 'rh'] %}
+        <a href="{{ url_for('recruitment.schedule_interview_view', application_id=application.id) }}"
+           class="btn btn-sm btn-outline-warning">
+          <i class="bi bi-plus me-1"></i>Planifier
+        </a>
+        {% endif %}
+      </div>
+
+      {% if interviews %}
+      <div class="list-group list-group-flush">
+        {% for iv in interviews %}
+        <a href="{{ url_for('recruitment.interview_detail', interview_id=iv.id) }}"
+           class="list-group-item list-group-item-action">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="fw-semibold">
+                {{ iv.TYPE_LABELS.get(iv.interview_type, iv.interview_type) }}
+                {% if iv.interviewer %}
+                  <span class="text-muted fw-normal">avec {{ iv.interviewer.full_name }}</span>
+                {% endif %}
+              </div>
+              <div class="text-muted small">
+                <i class="bi bi-calendar me-1"></i>
+                {{ iv.scheduled_at.strftime('%d/%m/%Y à %H:%M') }}
+                {% if iv.duration_minutes %}
+                  — {{ iv.duration_minutes }} min
+                {% endif %}
+                {% if iv.location %}
+                  — <i class="bi bi-geo-alt me-1"></i>{{ iv.location }}
+                {% endif %}
+              </div>
+            </div>
+            <div class="text-end ms-2">
+              {% if iv.decision == 'proceed' %}
+                <span class="badge bg-success-subtle text-success-emphasis">Poursuivre</span>
+              {% elif iv.decision == 'hold' %}
+                <span class="badge bg-warning-subtle text-warning-emphasis">À confirmer</span>
+              {% elif iv.decision == 'reject' %}
+                <span class="badge bg-danger-subtle text-danger-emphasis">Refuser</span>
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary-emphasis">En attente</span>
+              {% endif %}
+              {% if iv.rating and iv.rating > 0 %}
+              <div class="small text-warning mt-1">
+                {% for i in range(iv.rating) %}★{% endfor %}{% for i in range(5 - iv.rating) %}☆{% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="card-body text-center py-4 text-muted small">
+        <i class="bi bi-calendar-x d-block fs-3 mb-2 opacity-25"></i>
+        Aucun entretien planifié.
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('decisionStatus') && document.getElementById('decisionStatus')
+  .addEventListener('change', function() {
+    var block = document.getElementById('rejectionReasonBlock');
+    if (block) block.style.display = this.value === 'refusee' ? 'block' : 'none';
+  });
+</script>
+{% endblock %}

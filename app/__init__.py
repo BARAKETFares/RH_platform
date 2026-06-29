@@ -207,17 +207,18 @@ def _register_blueprints(app: Flask) -> None:
     """Enregistre tous les Blueprints SSR avec leur préfixe URL."""
     from .blueprints.auth        import bp as auth_bp
     from .blueprints.employees   import bp as employees_bp
-    from .blueprints.absences    import bp as absences_bp
     from .blueprints.recruitment import bp as recruitment_bp
     from .blueprints.performance import bp as performance_bp
     from .blueprints.payroll     import bp as payroll_bp
     from .blueprints.training    import bp as training_bp
     from .blueprints.reporting   import bp as reporting_bp
     from .blueprints.admin       import bp as admin_bp
+    from .blueprints.leaves      import bp as leaves_bp
 
     app.register_blueprint(auth_bp,        url_prefix="/auth")
     app.register_blueprint(employees_bp,   url_prefix="/employees")
-    app.register_blueprint(absences_bp,    url_prefix="/absences")
+    
+    app.register_blueprint(leaves_bp,      url_prefix="/leaves")
     app.register_blueprint(recruitment_bp, url_prefix="/recruitment")
     app.register_blueprint(performance_bp, url_prefix="/performance")
     app.register_blueprint(payroll_bp,     url_prefix="/payroll")

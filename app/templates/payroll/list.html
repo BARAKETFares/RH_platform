@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Mes bulletins de paie' if personal_view else 'Bulletins de paie' }}{% endblock %}
+{% block page_title %}{{ 'Mes bulletins de paie' if personal_view else 'Bulletins de paie' }}{% endblock %}
+
+{% block page_actions %}
+{% if not personal_view %}
+<a href="{{ url_for('payroll.generate') }}" class="btn btn-primary">
+  <i class="bi bi-plus-lg me-1"></i>Générer un bulletin
+</a>
+{% endif %}
+{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('reporting.dashboard') }}">Tableau de bord</a></li>
+    <li class="breadcrumb-item active">{{ 'Mes bulletins' if personal_view else 'Bulletins de paie' }}</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+
+{% set status_badge = {
+  'draft':     ('warning',  'Généré'),
+  'validated': ('info',     'Validé'),
+  'paid':      ('success',  'Payé'),
+} %}
+
+{# ── Filtres (admin/rh uniquement) ────────────────────────────────────── #}
+{% if filter_form %}
+<div class="card mb-4">
+  <div class="card-body py-3">
+    <form method="GET" novalidate class="row g-2 align-items-end">
+      <div class="col-md-3">
+        {{ filter_form.employee_id.label(class="form-label fw-medium small mb-1") }}
+        {{ filter_form.employee_id(class="form-select form-select-sm") }}
+      </div>
+      <div class="col-md-2">
+        {{ filter_form.period_year.label(class="form-label fw-medium small mb-1") }}
+        {{ filter_form.period_year(class="form-control form-control-sm", placeholder="2025") }}
+      </div>
+      <div class="col-md-2">
+        {{ filter_form.period_month.label(class="form-label fw-medium small mb-1") }}
+        {{ filter_form.period_month(class="form-select form-select-sm") }}
+      </div>
+      <div class="col-md-2">
+        {{ filter_form.status.label(class="form-label fw-medium small mb-1") }}
+        {{ filter_form.status(class="form-select form-select-sm") }}
+      </div>
+      <div class="col-md-3 d-flex gap-2">
+        {{ filter_form.submit(class="btn btn-outline-primary btn-sm") }}
+        <a href="{{ url_for('payroll.list_payslips_route') }}" class="btn btn-outline-secondary btn-sm">
+          Réinitialiser
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{# ── Table des bulletins ───────────────────────────────────────────────── #}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          {% if not personal_view %}
+          <th>Employé</th>
+          {% endif %}
+          <th>Période</th>
+          <th class="text-end">Brut mensuel</th>
+          <th class="text-end">Net à payer</th>
+          <th class="text-center">Statut</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ps in payslips %}
+        {% set badge_color, badge_label = status_badge.get(ps.status, ('secondary', ps.status)) %}
+        <tr>
+          {% if not personal_view %}
+          <td class="fw-medium">{{ ps.employee.full_name }}</td>
+          {% endif %}
+          <td>{{ ps.period_label }}</td>
+          <td class="text-end font-monospace">{{ '{:,.2f}'.format(ps.gross_salary | float).replace(',', ' ') }} €</td>
+          <td class="text-end font-monospace fw-semibold">{{ '{:,.2f}'.format(ps.net_salary | float).replace(',', ' ') }} €</td>
+          <td class="text-center">
+            <span class="badge bg-{{ badge_color }}-subtle text-{{ badge_color }} border border-{{ badge_color }}-subtle">
+              {{ badge_label }}
+            </span>
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('payroll.payslip_detail', payslip_id=ps.id) }}"
+               class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-eye me-1"></i>Voir
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="{{ 5 if personal_view else 6 }}" class="text-center text-muted py-5">
+            <i class="bi bi-wallet2 fs-2 d-block mb-2 opacity-25"></i>
+            Aucun bulletin de paie trouvé.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

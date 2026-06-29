@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% block title %}Entretien — {{ interview.application.candidate.full_name }}{% endblock %}
+{% block page_title %}Entretien — {{ interview.application.candidate.full_name }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('recruitment.application_detail', application_id=interview.application_id) }}"
+   class="btn btn-outline-secondary">
+  ← Retour à la candidature
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  {# ── Colonne gauche — Infos entretien ──────────────────────────────── #}
+  <div class="col-lg-4">
+
+    {# Carte principale entretien #}
+    <div class="card mb-3">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-calendar2-event me-2"></i>Détails de l'entretien
+      </div>
+      <div class="card-body">
+        <dl class="mb-0 small">
+
+          <dt class="text-muted">Type</dt>
+          <dd>
+            {% set type_icons = {
+                'phone': 'bi-telephone', 'video': 'bi-camera-video',
+                'onsite': 'bi-building', 'technical': 'bi-code-slash', 'hr': 'bi-person-badge'
+            } %}
+            <i class="bi {{ type_icons.get(interview.interview_type, 'bi-calendar') }} me-1"></i>
+            {{ interview.TYPE_LABELS.get(interview.interview_type, interview.interview_type) }}
+          </dd>
+
+          <dt class="text-muted">Date &amp; heure</dt>
+          <dd>{{ interview.scheduled_at.strftime('%d/%m/%Y à %H:%M') }}</dd>
+
+          {% if interview.duration_minutes %}
+          <dt class="text-muted">Durée prévue</dt>
+          <dd>{{ interview.duration_minutes }} minutes</dd>
+          {% endif %}
+
+          {% if interview.location %}
+          <dt class="text-muted">Lieu / Lien</dt>
+          <dd>{{ interview.location }}</dd>
+          {% endif %}
+
+          <dt class="text-muted">Interviewer</dt>
+          <dd>
+            {% if interview.interviewer %}
+              {{ interview.interviewer.full_name }}
+              {% if interview.interviewer.position %}
+              <span class="text-muted">({{ interview.interviewer.position.title }})</span>
+              {% endif %}
+            {% else %}
+              <span class="text-muted">Non assigné</span>
+            {% endif %}
+          </dd>
+
+        </dl>
+      </div>
+    </div>
+
+    {# Candidature liée #}
+    <div class="card mb-3">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-person me-2"></i>Candidat
+      </div>
+      <div class="card-body small">
+        <div class="fw-semibold mb-1">{{ interview.application.candidate.full_name }}</div>
+        <div class="text-muted">{{ interview.application.candidate.email }}</div>
+        {% if interview.application.candidate.phone %}
+        <div class="text-muted">{{ interview.application.candidate.phone }}</div>
+        {% endif %}
+        <hr class="my-2">
+        <div class="text-muted">
+          <i class="bi bi-briefcase me-1"></i>
+          <a href="{{ url_for('recruitment.posting_detail', posting_id=interview.application.job_posting_id) }}"
+             class="text-decoration-none text-muted">
+            {{ interview.application.job_posting.title }}
+          </a>
+        </div>
+        <div class="mt-1">
+          <a href="{{ url_for('recruitment.application_detail', application_id=interview.application_id) }}"
+             class="btn btn-sm btn-outline-primary w-100 mt-2">
+            Voir la candidature
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Colonne droite — Résultat ─────────────────────────────────────── #}
+  <div class="col-lg-8">
+
+    {% if interview.is_completed %}
+    {# ── Résultat saisi ─────────────────────────────────────────── #}
+    <div class="card mb-3">
+      <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-check2-circle me-2 text-success"></i>Résultat de l'entretien</span>
+        <span>
+          {% if interview.decision == 'proceed' %}
+            <span class="badge bg-success">Poursuivre</span>
+          {% elif interview.decision == 'hold' %}
+            <span class="badge bg-warning text-dark">À confirmer</span>
+          {% elif interview.decision == 'reject' %}
+            <span class="badge bg-danger">Refuser</span>
+          {% else %}
+            <span class="badge bg-secondary">En attente</span>
+          {% endif %}
+        </span>
+      </div>
+      <div class="card-body">
+
+        {# Décision + Note #}
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <div class="text-muted small fw-semibold mb-1">Recommandation</div>
+            <div class="fs-6">{{ DECISION_LABELS.get(interview.decision, interview.decision) }}</div>
+          </div>
+          {% if interview.rating and interview.rating > 0 %}
+          <div class="col-md-6">
+            <div class="text-muted small fw-semibold mb-1">Note globale</div>
+            <div class="text-warning fs-5">
+              {% for i in range(interview.rating) %}★{% endfor %}
+              {% for i in range(5 - interview.rating) %}<span class="text-muted">☆</span>{% endfor %}
+              <span class="text-dark fs-6 ms-1">({{ interview.rating }}/5)</span>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        {# Notes / Compte-rendu #}
+        {% if interview.notes %}
+        <div class="border rounded p-3 bg-light" style="white-space: pre-wrap; max-height: 400px; overflow-y: auto;">
+          <div class="text-muted small fw-semibold mb-2">Observations / Compte-rendu</div>
+          {{ interview.notes }}
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">Aucune observation saisie.</p>
+        {% endif %}
+
+        {# Bouton modifier le résultat si admin/rh #}
+        {% if role_name in ['admin', 'rh'] %}
+        <div class="mt-3">
+          <button class="btn btn-sm btn-outline-secondary"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#editResultCollapse">
+            <i class="bi bi-pencil me-1"></i>Modifier le résultat
+          </button>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+    {# Formulaire de modification (collapsed, admin/rh uniquement) #}
+    {% if role_name in ['admin', 'rh'] %}
+    <div class="collapse" id="editResultCollapse">
+      <div class="card border-warning">
+        <div class="card-header fw-semibold text-warning-emphasis bg-warning-subtle">
+          <i class="bi bi-pencil me-2"></i>Modifier le résultat
+        </div>
+        <div class="card-body">
+          <form method="POST"
+                action="{{ url_for('recruitment.update_interview_result', interview_id=interview.id) }}"
+                novalidate>
+            {{ result_form.hidden_tag() }}
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                {{ result_form.decision.label(class="form-label fw-medium small") }}
+                {{ result_form.decision(class="form-select form-select-sm",
+                                       **({'value': interview.decision} if interview.decision != 'pending' else {})) }}
+              </div>
+              <div class="col-md-6">
+                {{ result_form.rating.label(class="form-label fw-medium small") }}
+                {{ result_form.rating(class="form-select form-select-sm") }}
+              </div>
+            </div>
+            <div class="mb-3">
+              {{ result_form.notes.label(class="form-label fw-medium small") }}
+              {{ result_form.notes(class="form-control form-control-sm", id="editNotesField") }}
+            </div>
+            {{ result_form.submit(class="btn btn-warning btn-sm text-dark") }}
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% elif can_submit_result %}
+    {# ── Formulaire de saisie de résultat ───────────────────────── #}
+    <div class="card">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-pencil-square me-2"></i>Saisir le résultat
+      </div>
+      <div class="card-body">
+        <form method="POST"
+              action="{{ url_for('recruitment.update_interview_result', interview_id=interview.id) }}"
+              novalidate>
+          {{ result_form.hidden_tag() }}
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ result_form.decision.label(class="form-label fw-medium") }}
+              {{ result_form.decision(class="form-select" + (" is-invalid" if result_form.decision.errors else "")) }}
+              {% for err in result_form.decision.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ result_form.rating.label(class="form-label fw-medium") }}
+              {{ result_form.rating(class="form-select" + (" is-invalid" if result_form.rating.errors else "")) }}
+              {% for err in result_form.rating.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-4">
+            {{ result_form.notes.label(class="form-label fw-medium") }}
+            {{ result_form.notes(class="form-control" + (" is-invalid" if result_form.notes.errors else "")) }}
+            {% for err in result_form.notes.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          {{ result_form.submit(class="btn btn-primary") }}
+        </form>
+      </div>
+    </div>
+
+    {% else %}
+    {# ── Entretien planifié, résultat non encore disponible ─────── #}
+    <div class="card border-0 bg-light">
+      <div class="card-body text-center py-5 text-muted">
+        <i class="bi bi-hourglass-split fs-1 d-block mb-3 opacity-25"></i>
+        <p class="mb-0">Cet entretien n'a pas encore eu lieu ou le résultat n'a pas été saisi.</p>
+        {% set now_ts = interview.scheduled_at %}
+        <p class="small mt-1">
+          Planifié le <strong>{{ interview.scheduled_at.strftime('%d/%m/%Y à %H:%M') }}</strong>.
+        </p>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if interview.is_completed and role_name in ['admin', 'rh'] %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var ta = document.getElementById('editNotesField');
+  if (ta) ta.value = {{ interview.notes | tojson if interview.notes else '""' }};
+});
+</script>
+{% endif %}
+{% endblock %}

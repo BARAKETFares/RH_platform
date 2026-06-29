@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Rôles{% endblock %}
+{% block page_title %}Rôles & Permissions{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.list_users') }}">Administration</a></li>
+    <li class="breadcrumb-item active">Rôles</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  {% for role in roles %}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          {% set colors = {'admin': 'danger', 'rh': 'primary', 'manager': 'info', 'employee': 'secondary'} %}
+          <span class="badge bg-{{ colors.get(role.name, 'secondary') }} me-2">{{ role.name }}</span>
+          <strong>{{ role.label }}</strong>
+          {% if role.is_system %}
+          <span class="badge bg-warning text-dark ms-1 small">système</span>
+          {% endif %}
+        </div>
+        <a href="{{ url_for('admin.edit_role', role_id=role.id) }}"
+           class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-pencil me-1"></i>Modifier
+        </a>
+      </div>
+      <div class="card-body">
+        {% if role.description %}
+        <p class="text-muted small mb-2">{{ role.description }}</p>
+        {% endif %}
+        <div class="d-flex flex-wrap gap-1">
+          {% for perm in role.permissions %}
+          <span class="badge bg-light text-dark border small">{{ perm.code }}</span>
+          {% else %}
+          <span class="text-muted small fst-italic">Aucune permission assignée</span>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card-footer text-muted small">
+        Niveau {{ role.hierarchy_level }} — {{ role.users.count() }} utilisateur(s)
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

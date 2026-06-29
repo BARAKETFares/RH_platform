@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Demande #{{ leave_request.id }}{% endblock %}
+{% block page_title %}Demande d'absence #{{ leave_request.id }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  {# ── Colonne principale ────────────────────────────────────────── #}
+  <div class="col-lg-8">
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">
+          <span class="badge" style="background-color: {{ leave_request.leave_type.color_hex }};">
+            {{ leave_request.leave_type.code }}
+          </span>
+          {{ leave_request.leave_type.name }}
+        </span>
+        <span class="badge badge-leave-{{ leave_request.status }} fs-6">
+          {{ leave_request.status | replace('_', ' ') | capitalize }}
+        </span>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-4 text-muted small">Employé</dt>
+          <dd class="col-8">{{ leave_request.employee.full_name }}</dd>
+
+          <dt class="col-4 text-muted small">Période</dt>
+          <dd class="col-8">
+            {{ leave_request.start_date | date_fr }}
+            {% if leave_request.start_half_day %}<span class="text-muted">(demi-journée)</span>{% endif %}
+            →
+            {{ leave_request.end_date | date_fr }}
+            {% if leave_request.end_half_day %}<span class="text-muted">(demi-journée)</span>{% endif %}
+          </dd>
+
+          <dt class="col-4 text-muted small">Jours ouvrés</dt>
+          <dd class="col-8">{{ leave_request.working_days | days_label if leave_request.working_days else '—' }}</dd>
+
+          {% if leave_request.is_emergency %}
+          <dt class="col-4 text-muted small">Urgence</dt>
+          <dd class="col-8"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>Demande urgente</dd>
+          {% endif %}
+
+          {% if leave_request.employee_comment %}
+          <dt class="col-4 text-muted small">Commentaire</dt>
+          <dd class="col-8">{{ leave_request.employee_comment }}</dd>
+          {% endif %}
+
+          <dt class="col-4 text-muted small">Soumise le</dt>
+          <dd class="col-8">{{ leave_request.created_at | date_fr }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    {# ── Historique des décisions ────────────────────────────────── #}
+    {% if leave_request.manager_decision_at or leave_request.hr_decision_at or leave_request.cancelled_at %}
+    <div class="card">
+      <div class="card-header fw-semibold">Historique</div>
+      <ul class="list-group list-group-flush">
+        {% if leave_request.manager_decision_at %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between">
+            <span><i class="bi bi-person-check me-2"></i>Décision manager — {{ leave_request.manager.full_name if leave_request.manager else '—' }}</span>
+            <span class="text-muted small">{{ leave_request.manager_decision_at | date_fr }}</span>
+          </div>
+          {% if leave_request.manager_comment %}
+            <div class="text-muted small mt-1">{{ leave_request.manager_comment }}</div>
+          {% endif %}
+        </li>
+        {% endif %}
+        {% if leave_request.hr_decision_at %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between">
+            <span><i class="bi bi-person-badge me-2"></i>Décision RH</span>
+            <span class="text-muted small">{{ leave_request.hr_decision_at | date_fr }}</span>
+          </div>
+          {% if leave_request.hr_comment %}
+            <div class="text-muted small mt-1">{{ leave_request.hr_comment }}</div>
+          {% endif %}
+        </li>
+        {% endif %}
+        {% if leave_request.cancelled_at %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between">
+            <span><i class="bi bi-x-circle me-2 text-danger"></i>Annulation</span>
+            <span class="text-muted small">{{ leave_request.cancelled_at | date_fr }}</span>
+          </div>
+          {% if leave_request.cancellation_reason %}
+            <div class="text-muted small mt-1">{{ leave_request.cancellation_reason }}</div>
+          {% endif %}
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Colonne actions ───────────────────────────────────────────── #}
+  <div class="col-lg-4">
+
+    {% if can_decide %}
+    <div class="card mb-3 border-primary">
+      <div class="card-header bg-primary text-white fw-semibold">
+        <i class="bi bi-clipboard-check me-2"></i>Votre décision
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('leaves.decide', leave_id=leave_request.id) }}" novalidate>
+          {{ decision_form.hidden_tag() }}
+
+          <div class="mb-3">
+            {% for subfield in decision_form.decision %}
+            <div class="form-check">
+              {{ subfield(class="form-check-input") }}
+              {{ subfield.label(class="form-check-label") }}
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ decision_form.comment.label(class="form-label small fw-medium") }}
+            {{ decision_form.comment(class="form-control" + (" is-invalid" if decision_form.comment.errors else "")) }}
+            {% for err in decision_form.comment.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          {% if current_user.role.name == 'manager' %}
+          <div class="form-check mb-3">
+            {{ decision_form.requires_hr_validation(class="form-check-input") }}
+            {{ decision_form.requires_hr_validation.label(class="form-check-label small") }}
+          </div>
+          {% endif %}
+
+          {{ decision_form.submit(class="btn btn-primary w-100") }}
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if can_modify %}
+    <div class="card border-danger">
+      <div class="card-body">
+        <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#cancelModal">
+          <i class="bi bi-x-circle me-1"></i>Annuler la demande
+        </button>
+      </div>
+    </div>
+
+    <div class="modal fade" id="cancelModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form method="POST" action="{{ url_for('leaves.cancel_request', leave_id=leave_request.id) }}" novalidate>
+            {{ cancel_form.hidden_tag() }}
+            <div class="modal-header">
+              <h5 class="modal-title">Annuler cette demande ?</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              {{ cancel_form.reason.label(class="form-label small fw-medium") }}
+              {{ cancel_form.reason(class="form-control") }}
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+              {{ cancel_form.submit(class="btn btn-danger") }}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <a href="{{ url_for('leaves.my_requests') }}" class="btn btn-link w-100 mt-2 text-muted">
+      ← Retour à mes demandes
+    </a>
+  </div>
+
+</div>
+{% endblock %}

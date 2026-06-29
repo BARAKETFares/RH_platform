@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}Évaluation — {{ evaluation.employee.full_name }}{% endblock %}
+{% block page_title %}Évaluation de {{ evaluation.employee.full_name }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  {# ── Colonne principale ────────────────────────────────────────── #}
+  <div class="col-lg-8">
+
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">{{ evaluation.campaign.name }}</span>
+        {% set status_colors = {
+          'draft': 'secondary', 'in_progress': 'info', 'employee_review': 'warning',
+          'completed': 'success', 'archived': 'dark'
+        } %}
+        <span class="badge bg-{{ status_colors.get(evaluation.status, 'secondary') }} fs-6">
+          {{ evaluation.status | replace('_', ' ') | capitalize }}
+        </span>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-4 text-muted small">Employé évalué</dt>
+          <dd class="col-8">{{ evaluation.employee.full_name }}</dd>
+
+          <dt class="col-4 text-muted small">Évaluateur</dt>
+          <dd class="col-8">{{ evaluation.evaluator.full_name }}</dd>
+
+          {% if evaluation.overall_score %}
+          <dt class="col-4 text-muted small">Score global</dt>
+          <dd class="col-8">
+            <strong>{{ evaluation.overall_score }}/5</strong>
+          </dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+
+    {# ── Contenu rédigé (si présent) ──────────────────────────────── #}
+    {% if evaluation.status in ('employee_review', 'completed', 'archived') or evaluation.strengths or evaluation.areas_for_improvement or evaluation.development_plan or evaluation.manager_overall_comment %}
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">Synthèse de l'évaluation</div>
+      <div class="card-body">
+        {% if evaluation.strengths %}
+        <h6 class="text-success"><i class="bi bi-check-circle me-1"></i>Points forts</h6>
+        <p>{{ evaluation.strengths }}</p>
+        {% endif %}
+
+        {% if evaluation.areas_for_improvement %}
+        <h6 class="text-warning"><i class="bi bi-arrow-up-circle me-1"></i>Axes de progression</h6>
+        <p>{{ evaluation.areas_for_improvement }}</p>
+        {% endif %}
+
+        {% if evaluation.development_plan %}
+        <h6 class="text-info"><i class="bi bi-signpost me-1"></i>Plan de développement</h6>
+        <p>{{ evaluation.development_plan }}</p>
+        {% endif %}
+
+        {% if evaluation.manager_overall_comment %}
+        <hr>
+        <p class="text-muted"><strong>Commentaire du manager :</strong><br>{{ evaluation.manager_overall_comment }}</p>
+        {% endif %}
+
+        {% if evaluation.employee_overall_comment %}
+        <p class="text-muted"><strong>Commentaire de l'employé :</strong><br>{{ evaluation.employee_overall_comment }}</p>
+        {% endif %}
+
+        {% if not (evaluation.strengths or evaluation.areas_for_improvement or evaluation.development_plan or evaluation.manager_overall_comment or evaluation.overall_score) %}
+        <p class="text-muted mb-0">
+          <i class="bi bi-dash-circle me-1"></i>Aucun contenu textuel renseigné par l'évaluateur.
+        </p>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Formulaire de rédaction (évaluateur) ─────────────────────── #}
+    {% if can_write_content %}
+    <div class="card mb-4 border-primary">
+      <div class="card-header bg-primary text-white fw-semibold">
+        <i class="bi bi-pencil-square me-2"></i>Rédiger l'évaluation
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('performance.submit_evaluation', evaluation_id=evaluation.id) }}" novalidate>
+          {{ content_form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ content_form.overall_score.label(class="form-label fw-medium") }}
+            {{ content_form.overall_score(class="form-control", style="max-width: 150px;") }}
+          </div>
+          <div class="mb-3">
+            {{ content_form.strengths.label(class="form-label fw-medium") }}
+            {{ content_form.strengths(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ content_form.areas_for_improvement.label(class="form-label fw-medium") }}
+            {{ content_form.areas_for_improvement(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ content_form.development_plan.label(class="form-label fw-medium") }}
+            {{ content_form.development_plan(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ content_form.manager_overall_comment.label(class="form-label fw-medium") }}
+            {{ content_form.manager_overall_comment(class="form-control") }}
+          </div>
+
+          {{ content_form.submit(class="btn btn-primary") }}
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Formulaire d'accusé de réception (employé) ───────────────── #}
+    {% if can_acknowledge %}
+    <div class="card mb-4 border-warning">
+      <div class="card-header bg-warning-subtle fw-semibold">
+        <i class="bi bi-eye me-2"></i>Votre relecture
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('performance.acknowledge_evaluation', evaluation_id=evaluation.id) }}" novalidate>
+          {{ acknowledge_form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ acknowledge_form.employee_overall_comment.label(class="form-label fw-medium") }}
+            {{ acknowledge_form.employee_overall_comment(class="form-control") }}
+          </div>
+
+          <div class="form-check mb-3">
+            {{ acknowledge_form.confirm_signature(class="form-check-input" + (" is-invalid" if acknowledge_form.confirm_signature.errors else "")) }}
+            {{ acknowledge_form.confirm_signature.label(class="form-check-label") }}
+            {% for err in acknowledge_form.confirm_signature.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          {{ acknowledge_form.submit(class="btn btn-warning") }}
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Déjà signé par l'employé — en attente de finalisation ─────── #}
+    {% if already_acknowledged %}
+    <div class="alert alert-info" role="alert">
+      <i class="bi bi-check-circle me-1"></i>
+      <strong>Évaluation signée</strong> le
+      {{ evaluation.employee_acknowledged_at.strftime('%d/%m/%Y à %H:%M') }}.
+      En attente de finalisation par votre manager.
+    </div>
+    {% endif %}
+
+  </div>
+
+  {# ── Colonne actions ───────────────────────────────────────────── #}
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-body">
+
+        {% if evaluation.status == 'draft' and current_user.role.name in ('admin', 'rh') %}
+        <form method="POST" action="{{ url_for('performance.send_evaluation', evaluation_id=evaluation.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-send me-1"></i>Envoyer à l'évaluateur
+          </button>
+        </form>
+        {% endif %}
+
+        {% if can_finalize %}
+        <form method="POST" action="{{ url_for('performance.finalize_evaluation_route', evaluation_id=evaluation.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% if not evaluation.employee_acknowledged_at %}
+          <p class="text-muted small mb-2">
+            <i class="bi bi-exclamation-triangle me-1"></i>L'employé n'a pas encore signé.
+          </p>
+          {% endif %}
+          <button type="submit" class="btn btn-success w-100">
+            <i class="bi bi-check2-circle me-1"></i>Finaliser l'évaluation
+          </button>
+        </form>
+        {% endif %}
+
+        {% if can_archive %}
+        <form method="POST" action="{{ url_for('performance.archive_evaluation_route', evaluation_id=evaluation.id) }}"
+              class="mt-2">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline-secondary w-100">
+            <i class="bi bi-archive me-1"></i>Archiver
+          </button>
+        </form>
+        {% endif %}
+
+        {% if evaluation.is_fully_signed %}
+        <div class="alert alert-success mt-3 mb-0 small">
+          <i class="bi bi-shield-check me-1"></i>Signée par les deux parties
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+    <a href="{{ url_for('performance.index') }}" class="btn btn-link w-100 mt-3 text-muted">
+      ← Retour aux évaluations
+    </a>
+  </div>
+
+</div>
+{% endblock %}

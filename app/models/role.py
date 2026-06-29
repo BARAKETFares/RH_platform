@@ -33,9 +33,8 @@ class RolePermission(db.Model):
     Modèle explicite (pas db.Table) pour pouvoir stocker granted_at.
     """
     __tablename__ = "role_permissions"
-    __table_args__ = (
-        UniqueConstraint("role_id", "permission_id", name="uq_role_permission"),
-    )
+    # Pas de __table_args__ nécessaire : la PK composite (role_id, permission_id)
+    # garantit déjà l'unicité de la paire.
 
     role_id: Mapped[int] = mapped_column(
         Integer,

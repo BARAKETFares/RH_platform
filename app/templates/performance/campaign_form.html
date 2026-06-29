@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Nouvelle campagne{% endblock %}
+{% block page_title %}Nouvelle campagne d'évaluation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body p-4">
+
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ form.name.label(class="form-label fw-medium") }}
+            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+            {% for err in form.name.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ form.description.label(class="form-label fw-medium") }}
+            {{ form.description(class="form-control") }}
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.period_year.label(class="form-label fw-medium") }}
+              {{ form.period_year(class="form-control" + (" is-invalid" if form.period_year.errors else "")) }}
+              {% for err in form.period_year.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.period_type.label(class="form-label fw-medium") }}
+              {{ form.period_type(class="form-select") }}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.start_date.label(class="form-label fw-medium") }}
+              {{ form.start_date(class="form-control" + (" is-invalid" if form.start_date.errors else ""), type="date") }}
+              {% for err in form.start_date.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.end_date.label(class="form-label fw-medium") }}
+              {{ form.end_date(class="form-control" + (" is-invalid" if form.end_date.errors else ""), type="date") }}
+              {% for err in form.end_date.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-4">
+            {{ form.objective_deadline.label(class="form-label fw-medium") }}
+            {{ form.objective_deadline(class="form-control" + (" is-invalid" if form.objective_deadline.errors else ""), type="date") }}
+            {% for err in form.objective_deadline.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+            <div class="form-text">Date limite pour que les managers fixent les objectifs de leur équipe.</div>
+          </div>
+
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('performance.list_campaigns') }}" class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

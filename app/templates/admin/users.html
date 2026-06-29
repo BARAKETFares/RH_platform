@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Utilisateurs{% endblock %}
+{% block page_title %}Utilisateurs{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('admin.new_user') }}" class="btn btn-primary">
+  <i class="bi bi-person-plus me-1"></i>Nouvel utilisateur
+</a>
+{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.list_users') }}">Administration</a></li>
+    <li class="breadcrumb-item active">Utilisateurs</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+
+{# ── Filtres ─────────────────────────────────────────────────────────────── #}
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label small fw-medium mb-1">Recherche (e-mail)</label>
+        <input type="text" name="search" class="form-control form-control-sm"
+               value="{{ search }}" placeholder="prenom.nom@…">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small fw-medium mb-1">Rôle</label>
+        <select name="role_id" class="form-select form-select-sm">
+          <option value="">Tous les rôles</option>
+          {% for r in roles %}
+          <option value="{{ r.id }}" {{ 'selected' if role_filter == r.id }}>
+            {{ r.label }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+          <i class="bi bi-search me-1"></i>Filtrer
+        </button>
+        {% if search or role_filter %}
+        <a href="{{ url_for('admin.list_users') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-x"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Tableau ──────────────────────────────────────────────────────────────── #}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>E-mail</th>
+          <th>Rôle</th>
+          <th>Statut</th>
+          <th>2FA</th>
+          <th>Dernière connexion</th>
+          <th>Créé le</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>
+            <span class="fw-medium">{{ u.email }}</span>
+            {% if u.force_password_change %}
+            <span class="badge bg-warning text-dark ms-1" title="Doit changer son mot de passe">
+              <i class="bi bi-key"></i>
+            </span>
+            {% endif %}
+          </td>
+          <td>
+            {% set role_colors = {'admin': 'danger', 'rh': 'primary', 'manager': 'info', 'employee': 'secondary'} %}
+            <span class="badge bg-{{ role_colors.get(u.role.name, 'secondary') }}-subtle
+                                text-{{ role_colors.get(u.role.name, 'secondary') }} border
+                                border-{{ role_colors.get(u.role.name, 'secondary') }}-subtle">
+              {{ u.role.label }}
+            </span>
+          </td>
+          <td>
+            {% if u.is_locked %}
+            <span class="badge bg-danger">
+              <i class="bi bi-lock me-1"></i>Verrouillé
+            </span>
+            {% elif u._is_active %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle">
+              <i class="bi bi-check-circle me-1"></i>Actif
+            </span>
+            {% else %}
+            <span class="badge bg-secondary">
+              <i class="bi bi-dash-circle me-1"></i>Désactivé
+            </span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if u.totp_enabled %}
+            <i class="bi bi-shield-check text-success" title="2FA activé"></i>
+            {% else %}
+            <i class="bi bi-shield text-muted" title="2FA désactivé"></i>
+            {% endif %}
+          </td>
+          <td class="text-muted small">
+            {{ u.last_login_at.strftime('%d/%m/%Y %H:%M') if u.last_login_at else '—' }}
+          </td>
+          <td class="text-muted small">
+            {{ u.created_at.strftime('%d/%m/%Y') }}
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('admin.edit_user', uuid=u.uuid) }}"
+               class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-pencil me-1"></i>Modifier
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">
+            <i class="bi bi-people fs-2 d-block mb-2 opacity-25"></i>
+            Aucun utilisateur trouvé.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.total > 0 %}
+  <div class="card-footer d-flex justify-content-between align-items-center py-2">
+    <span class="text-muted small">
+      {{ pagination.total }} utilisateur{{ 's' if pagination.total > 1 }}
+      — page {{ pagination.page }}/{{ pagination.pages }}
+    </span>
+    {% if pagination.pages > 1 %}
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+          <a class="page-link" href="{{ url_for('admin.list_users', page=pagination.prev_num, search=search, role_id=role_filter) }}">«</a>
+        </li>
+        {% for p in range(1, pagination.pages + 1) %}
+        <li class="page-item {{ 'active' if p == pagination.page }}">
+          <a class="page-link" href="{{ url_for('admin.list_users', page=p, search=search, role_id=role_filter) }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+          <a class="page-link" href="{{ url_for('admin.list_users', page=pagination.next_num, search=search, role_id=role_filter) }}">»</a>
+        </li>
+      </ul>
+    </nav>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

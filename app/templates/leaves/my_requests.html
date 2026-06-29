@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Mes congés{% endblock %}
+{% block page_title %}Mes demandes d'absence{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('leaves.new_request') }}" class="btn btn-primary">
+  <i class="bi bi-plus-lg me-1"></i>Nouvelle demande
+</a>
+{% endblock %}
+
+{% block content %}
+
+{# ── Soldes de congés ──────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  {% for balance in balances %}
+  <div class="col-md-3 col-sm-6">
+    <div class="card kpi-card h-100" style="border-left: 4px solid {{ balance.leave_type.color_hex }};">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">
+          {{ balance.leave_type.code }}
+        </div>
+        <div class="kpi-value">{{ balance.available | days_label }}</div>
+        <div class="text-muted small">
+          disponible{{ 's' if balance.available > 1 else '' }} sur {{ balance.total_acquired | days_label }}
+        </div>
+        {% if balance.pending > 0 %}
+        <div class="text-warning small mt-1">
+          <i class="bi bi-hourglass-split me-1"></i>{{ balance.pending | days_label }} en attente
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <div class="alert alert-light border mb-0">
+      <i class="bi bi-info-circle me-2"></i>Aucun solde de congés disponible pour le moment.
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ── Filtres par statut ────────────────────────────────────────────── #}
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  <a href="{{ url_for('leaves.my_requests') }}"
+     class="btn btn-sm {{ 'btn-primary' if not status_filter else 'btn-outline-secondary' }}">
+    Toutes
+  </a>
+  {% for s in statuses %}
+  <a href="{{ url_for('leaves.my_requests', status=s) }}"
+     class="btn btn-sm {{ 'btn-primary' if status_filter == s else 'btn-outline-secondary' }}">
+    {{ s | replace('_', ' ') | capitalize }}
+  </a>
+  {% endfor %}
+</div>
+
+{# ── Tableau des demandes ──────────────────────────────────────────── #}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Type</th>
+          <th>Période</th>
+          <th>Jours</th>
+          <th>Statut</th>
+          <th>Soumise le</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lr in leave_requests %}
+        <tr>
+          <td>
+            <span class="badge" style="background-color: {{ lr.leave_type.color_hex }};">
+              {{ lr.leave_type.code }}
+            </span>
+            {{ lr.leave_type.name }}
+          </td>
+          <td>
+            {{ lr.start_date | date_fr }} → {{ lr.end_date | date_fr }}
+            {% if lr.is_emergency %}
+              <i class="bi bi-exclamation-triangle-fill text-warning ms-1" title="Urgent"></i>
+            {% endif %}
+          </td>
+          <td>{{ lr.working_days | days_label if lr.working_days else '—' }}</td>
+          <td>
+            <span class="badge badge-leave-{{ lr.status }}">
+              {{ lr.status | replace('_', ' ') | capitalize }}
+            </span>
+          </td>
+          <td class="text-muted small">{{ lr.created_at | date_fr }}</td>
+          <td class="text-end">
+            <a href="{{ url_for('leaves.detail', leave_id=lr.id) }}" class="btn btn-sm btn-outline-primary">
+              Voir
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">
+            <i class="bi bi-calendar-x fs-3 d-block mb-2"></i>
+            Aucune demande d'absence pour le moment.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ── Pagination ────────────────────────────────────────────────────── #}
+{% if pagination.pages > 1 %}
+<nav class="mt-3">
+  <ul class="pagination justify-content-center">
+    <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+      <a class="page-link" href="{{ url_for('leaves.my_requests', page=pagination.prev_num, status=status_filter) }}">«</a>
+    </li>
+    {% for p in range(1, pagination.pages + 1) %}
+    <li class="page-item {{ 'active' if p == pagination.page }}">
+      <a class="page-link" href="{{ url_for('leaves.my_requests', page=p, status=status_filter) }}">{{ p }}</a>
+    </li>
+    {% endfor %}
+    <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+      <a class="page-link" href="{{ url_for('leaves.my_requests', page=pagination.next_num, status=status_filter) }}">»</a>
+    </li>
+  </ul>
+</nav>
+{% endif %}
+
+{% endblock %}

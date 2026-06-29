@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body p-4">
+
+        {# En mode édition, POST vers la route edit ; en création, POST vers new #}
+        <form method="POST"
+              action="{{ url_for('training.edit_training', training_id=training.id) if training else '' }}"
+              novalidate>
+          {{ form.hidden_tag() }}
+
+          {# ── Titre ──────────────────────────────────────────────── #}
+          <div class="mb-3">
+            {{ form.title.label(class="form-label fw-medium") }}
+            {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else "")) }}
+            {% for err in form.title.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          {# ── Description ─────────────────────────────────────────── #}
+          <div class="mb-3">
+            {{ form.description.label(class="form-label fw-medium") }}
+            {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else "")) }}
+            {% for err in form.description.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          {# ── Organisme ───────────────────────────────────────────── #}
+          <div class="mb-3">
+            {{ form.organisme.label(class="form-label fw-medium") }}
+            {{ form.organisme(class="form-control" + (" is-invalid" if form.organisme.errors else "")) }}
+            {% for err in form.organisme.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          {# ── Mode de diffusion ───────────────────────────────────── #}
+          <div class="mb-3">
+            {{ form.training_type.label(class="form-label fw-medium") }}
+            {{ form.training_type(class="form-select" + (" is-invalid" if form.training_type.errors else "")) }}
+            {% for err in form.training_type.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          {# ── Durée + Coût ────────────────────────────────────────── #}
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.duration_hours.label(class="form-label fw-medium") }}
+              <div class="input-group">
+                {{ form.duration_hours(class="form-control" + (" is-invalid" if form.duration_hours.errors else ""),
+                                       placeholder="Ex : 14") }}
+                <span class="input-group-text">h</span>
+              </div>
+              {% for err in form.duration_hours.errors %}
+                <div class="text-danger small mt-1">{{ err }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.cost.label(class="form-label fw-medium") }}
+              <div class="input-group">
+                {{ form.cost(class="form-control" + (" is-invalid" if form.cost.errors else ""),
+                              placeholder="Ex : 1200") }}
+                <span class="input-group-text">€ HT</span>
+              </div>
+              {% for err in form.cost.errors %}
+                <div class="text-danger small mt-1">{{ err }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          {# ── Statut actif ────────────────────────────────────────── #}
+          <div class="form-check mb-4">
+            {{ form.is_active(class="form-check-input") }}
+            {{ form.is_active.label(class="form-check-label") }}
+            <div class="form-text">Les formations inactives n'apparaissent pas dans le catalogue.</div>
+          </div>
+
+          {# ── Actions ─────────────────────────────────────────────── #}
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('training.list_trainings_view') }}" class="btn btn-outline-secondary">
+              Annuler
+            </a>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

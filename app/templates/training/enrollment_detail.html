@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Inscription #{{ enrollment.id }}{% endblock %}
+{% block page_title %}Inscription #{{ enrollment.id }}{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  {# ── Colonne principale ────────────────────────────────────────────── #}
+  <div class="col-lg-8">
+
+    {# Carte formation #}
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">
+          <i class="bi bi-mortarboard me-2"></i>{{ enrollment.training.title }}
+        </span>
+        {% if enrollment.status == 'planifiee' %}
+          <span class="badge bg-secondary fs-6">Planifiée</span>
+        {% elif enrollment.status == 'en_cours' %}
+          <span class="badge bg-warning text-dark fs-6">En cours</span>
+        {% elif enrollment.status == 'terminee' %}
+          <span class="badge bg-success fs-6">Terminée</span>
+        {% else %}
+          <span class="badge bg-danger fs-6">Annulée</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+
+          <dt class="col-4 text-muted small">Employé</dt>
+          <dd class="col-8">{{ enrollment.employee.full_name }}</dd>
+
+          {% if enrollment.training.organisme %}
+          <dt class="col-4 text-muted small">Organisme</dt>
+          <dd class="col-8">{{ enrollment.training.organisme }}</dd>
+          {% endif %}
+
+          <dt class="col-4 text-muted small">Mode</dt>
+          <dd class="col-8">
+            {% if enrollment.training.training_type == 'presentiel' %}
+              <span class="badge bg-primary-subtle text-primary-emphasis">
+                <i class="bi bi-building me-1"></i>Présentiel
+              </span>
+            {% elif enrollment.training.training_type == 'distanciel' %}
+              <span class="badge bg-info-subtle text-info-emphasis">
+                <i class="bi bi-camera-video me-1"></i>Distanciel
+              </span>
+            {% else %}
+              <span class="badge bg-success-subtle text-success-emphasis">
+                <i class="bi bi-laptop me-1"></i>E-learning
+              </span>
+            {% endif %}
+          </dd>
+
+          {% if enrollment.training.duration_hours %}
+          <dt class="col-4 text-muted small">Durée</dt>
+          <dd class="col-8">{{ enrollment.training.duration_hours }}h</dd>
+          {% endif %}
+
+          {% if enrollment.training.cost is not none %}
+          <dt class="col-4 text-muted small">Coût unitaire</dt>
+          <dd class="col-8">{{ "%.0f"|format(enrollment.training.cost) }} € HT</dd>
+          {% endif %}
+
+          <dt class="col-4 text-muted small">Date de début</dt>
+          <dd class="col-8">
+            {{ enrollment.start_date.strftime('%d/%m/%Y') if enrollment.start_date else '—' }}
+          </dd>
+
+          <dt class="col-4 text-muted small">Date de fin</dt>
+          <dd class="col-8">
+            {{ enrollment.end_date.strftime('%d/%m/%Y') if enrollment.end_date else '—' }}
+          </dd>
+
+          <dt class="col-4 text-muted small">Inscrit le</dt>
+          <dd class="col-8 text-muted small">{{ enrollment.created_at.strftime('%d/%m/%Y') }}</dd>
+
+        </dl>
+      </div>
+    </div>
+
+    {# Résultat — visible uniquement si terminée #}
+    {% if enrollment.status == 'terminee' %}
+    <div class="card mb-4 border-{{ 'success' if enrollment.is_passed else 'danger' }}">
+      <div class="card-header fw-semibold bg-{{ 'success' if enrollment.is_passed else 'danger' }}-subtle">
+        <i class="bi bi-{{ 'trophy' if enrollment.is_passed else 'x-circle' }} me-2"></i>
+        Résultat
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-4 text-muted small">Note finale</dt>
+          <dd class="col-8">
+            {% if enrollment.score is not none %}
+              <span class="fw-semibold {{ 'text-success' if enrollment.is_passed else 'text-danger' }} fs-5">
+                {{ "%.1f"|format(enrollment.score) }} / 100
+              </span>
+              <span class="text-muted small ms-2">
+                ({{ 'Réussite' if enrollment.is_passed else 'Échec' }} — seuil : 50)
+              </span>
+            {% else %}
+              <span class="text-muted">Non renseignée</span>
+            {% endif %}
+          </dd>
+          {% if enrollment.final_comment %}
+          <dt class="col-4 text-muted small">Appréciation</dt>
+          <dd class="col-8">{{ enrollment.final_comment }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+    {% endif %}
+
+    {# Description de la formation #}
+    {% if enrollment.training.description %}
+    <div class="card">
+      <div class="card-header fw-semibold">À propos de cette formation</div>
+      <div class="card-body text-muted small">
+        <span style="white-space: pre-wrap;">{{ enrollment.training.description }}</span>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  {# ── Colonne actions ───────────────────────────────────────────────── #}
+  <div class="col-lg-4">
+
+    {% if enrollment.status in ('planifiee', 'en_cours') and can_update %}
+    <div class="card mb-3 border-primary">
+      <div class="card-header bg-primary text-white fw-semibold">
+        <i class="bi bi-arrow-repeat me-2"></i>Changer le statut
+      </div>
+      <div class="card-body">
+        <form method="POST"
+              action="{{ url_for('training.update_enrollment_status_view', enrollment_id=enrollment.id) }}"
+              novalidate>
+          {{ status_form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ status_form.status.label(class="form-label small fw-medium") }}
+            <select name="status" class="form-select form-select-sm" required>
+              {% if enrollment.status == 'planifiee' %}
+                <option value="en_cours">En cours</option>
+                <option value="annulee">Annulée</option>
+              {% elif enrollment.status == 'en_cours' %}
+                <option value="terminee">Terminée</option>
+                <option value="annulee">Annulée</option>
+              {% endif %}
+            </select>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label small fw-medium">Date de début effective</label>
+            <input type="date" name="start_date" class="form-control form-control-sm"
+                   value="{{ enrollment.start_date.strftime('%Y-%m-%d') if enrollment.start_date else '' }}">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-medium">Date de fin effective</label>
+            <input type="date" name="end_date" class="form-control form-control-sm"
+                   value="{{ enrollment.end_date.strftime('%Y-%m-%d') if enrollment.end_date else '' }}">
+          </div>
+          {# FIX C-2b : score et commentaire uniquement pour la transition 'terminee' #}
+          {% if enrollment.status == 'en_cours' %}
+          <div class="mb-2">
+            <label class="form-label small fw-medium">Note finale (0–100)</label>
+            <input type="number" name="score" class="form-control form-control-sm"
+                   min="0" max="100" step="0.5"
+                   placeholder="Optionnel">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-medium">Commentaire</label>
+            <textarea name="final_comment" class="form-control form-control-sm" rows="2"></textarea>
+          </div>
+          {% endif %}
+
+          <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-body">
+        <a href="{{ url_for('training.training_detail', training_id=enrollment.training_id) }}"
+           class="btn btn-outline-secondary w-100 mb-2">
+          <i class="bi bi-arrow-left me-1"></i>Retour à la formation
+        </a>
+        <a href="{{ url_for('training.my_trainings') }}"
+           class="btn btn-link w-100 text-muted">
+          Mes formations
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

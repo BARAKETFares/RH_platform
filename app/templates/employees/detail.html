@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+{% block title %}{{ employee.full_name }}{% endblock %}
+{% block page_title %}{{ employee.full_name }}{% endblock %}
+
+{% block page_actions %}
+{% if current_user.role.name in ['admin', 'rh'] %}
+<div class="d-flex gap-2">
+  <a href="{{ url_for('employees.edit_employee', employee_id=employee.id) }}" class="btn btn-outline-primary">
+    <i class="bi bi-pencil me-1"></i>Modifier
+  </a>
+  {% if not employee.is_terminated %}
+  <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#terminateModal">
+    <i class="bi bi-person-x me-1"></i>Marquer le départ
+  </button>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  {# ── Colonne principale ────────────────────────────────────────── #}
+  <div class="col-lg-8">
+
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-person me-2"></i>Informations personnelles
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-4 text-muted small">Nom complet</dt>
+          <dd class="col-8">{{ employee.full_name }}</dd>
+
+          <dt class="col-4 text-muted small">Genre</dt>
+          <dd class="col-8">{{ employee.gender | default('—', true) }}</dd>
+
+          <dt class="col-4 text-muted small">Date de naissance</dt>
+          <dd class="col-8">{{ employee.birth_date | date_fr if employee.birth_date else '—' }}</dd>
+
+          <dt class="col-4 text-muted small">Email personnel</dt>
+          <dd class="col-8">{{ employee.personal_email or '—' }}</dd>
+
+          <dt class="col-4 text-muted small">Téléphone</dt>
+          <dd class="col-8">{{ employee.personal_phone or '—' }}</dd>
+
+          <dt class="col-4 text-muted small">Adresse</dt>
+          <dd class="col-8">
+            {% if employee.address_line1 %}
+              {{ employee.address_line1 }}, {{ employee.postal_code }} {{ employee.city }}
+            {% else %}—{% endif %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    {% if current_user.role.name in ['admin', 'rh'] %}
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-lock me-2"></i>Données sensibles (Admin / RH)
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-4 text-muted small">N° Sécurité sociale</dt>
+          <dd class="col-8">
+            {% if employee.national_id_number %}
+              <span class="font-monospace">{{ employee.national_id_number }}</span>
+            {% else %}—{% endif %}
+          </dd>
+
+          <dt class="col-4 text-muted small">Salaire brut annuel</dt>
+          <dd class="col-8">
+            {% if employee.annual_gross_salary %}
+              {{ '{:,.2f}'.format(employee.annual_gross_salary | float).replace(',', ' ') }} €
+            {% else %}—{% endif %}
+          </dd>
+
+          <dt class="col-4 text-muted small">IBAN</dt>
+          <dd class="col-8">
+            {% if employee.iban %}
+              <span class="font-monospace">{{ employee.iban }}</span>
+            {% else %}—{% endif %}
+          </dd>
+
+          <dt class="col-4 text-muted small">BIC / SWIFT</dt>
+          <dd class="col-8">{{ employee.bic or '—' }}</dd>
+        </dl>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-briefcase me-2"></i>Informations professionnelles
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-4 text-muted small">Matricule</dt>
+          <dd class="col-8">{{ employee.employee_number or '—' }}</dd>
+
+          <dt class="col-4 text-muted small">Département</dt>
+          <dd class="col-8">{{ employee.department.full_path if employee.department else '—' }}</dd>
+
+          <dt class="col-4 text-muted small">Poste</dt>
+          <dd class="col-8">{{ employee.position.title if employee.position else '—' }}</dd>
+
+          <dt class="col-4 text-muted small">Site</dt>
+          <dd class="col-8">{{ employee.site.name if employee.site else '—' }}</dd>
+
+          <dt class="col-4 text-muted small">Manager</dt>
+          <dd class="col-8">
+            {% if employee.manager %}
+              <a href="{{ url_for('employees.detail', employee_id=employee.manager.id) }}">
+                {{ employee.manager.full_name }}
+              </a>
+            {% else %}—{% endif %}
+          </dd>
+
+          <dt class="col-4 text-muted small">Date d'embauche</dt>
+          <dd class="col-8">{{ employee.hire_date | date_fr }}</dd>
+
+          <dt class="col-4 text-muted small">Ancienneté</dt>
+          <dd class="col-8">{{ employee.seniority_years }} an(s)</dd>
+
+          {% if employee.probation_end_date %}
+          <dt class="col-4 text-muted small">Fin période d'essai</dt>
+          <dd class="col-8">{{ employee.probation_end_date | date_fr }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+
+    {# ── Contrats ───────────────────────────────────────────────────── #}
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-file-text me-2"></i>Contrats</span>
+        {% if current_user.role.name in ['admin', 'rh'] %}
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#contractModal">
+          <i class="bi bi-plus-lg me-1"></i>Nouveau contrat
+        </button>
+        {% endif %}
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Type</th>
+              <th>Début</th>
+              <th>Fin</th>
+              <th>Heures/sem.</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in contracts %}
+            <tr>
+              <td>{{ c.contract_type.name }}</td>
+              <td>{{ c.start_date | date_fr }}</td>
+              <td>{{ c.end_date | date_fr if c.end_date else 'CDI' }}</td>
+              <td>{{ c.weekly_hours }}h</td>
+              <td>
+                {% if c.is_current %}
+                  <span class="badge bg-success">En cours</span>
+                {% elif c.is_expired %}
+                  <span class="badge bg-secondary">Expiré</span>
+                {% else %}
+                  <span class="badge bg-light text-dark">Terminé</span>
+                {% endif %}
+                {% if c.expires_soon %}
+                  <span class="badge bg-warning text-dark ms-1">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Expire bientôt
+                  </span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-3">Aucun contrat enregistré.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Colonne latérale ──────────────────────────────────────────── #}
+  <div class="col-lg-4">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="avatar-circle bg-primary-subtle text-primary mx-auto mb-3"
+             style="width:80px;height:80px;font-size:1.5rem;">
+          {{ employee.initials }}
+        </div>
+        <h5 class="mb-1">{{ employee.full_name }}</h5>
+        <p class="text-muted small mb-3">{{ employee.position.title if employee.position else 'Poste non défini' }}</p>
+        {% set status_colors = {
+          'active': 'success', 'probation': 'warning', 'on_leave': 'info',
+          'suspended': 'secondary', 'terminated': 'dark'
+        } %}
+        <span class="badge bg-{{ status_colors.get(employee.status, 'secondary') }} fs-6">
+          {{ employee.status | replace('_', ' ') | capitalize }}
+        </span>
+      </div>
+    </div>
+
+    <a href="{{ url_for('employees.list_employees_route') }}" class="btn btn-link w-100 mt-3 text-muted">
+      ← Retour à la liste
+    </a>
+  </div>
+
+</div>
+
+{# ── Modal nouveau contrat ─────────────────────────────────────────── #}
+<div class="modal fade" id="contractModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('employees.new_contract', employee_id=employee.id) }}" novalidate>
+        {{ contract_form.hidden_tag() }}
+        <div class="modal-header">
+          <h5 class="modal-title">Nouveau contrat</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            {{ contract_form.contract_type_id.label(class="form-label small fw-medium") }}
+            {{ contract_form.contract_type_id(class="form-select") }}
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              {{ contract_form.start_date.label(class="form-label small fw-medium") }}
+              {{ contract_form.start_date(class="form-control", type="date") }}
+            </div>
+            <div class="col-6">
+              {{ contract_form.end_date.label(class="form-label small fw-medium") }}
+              {{ contract_form.end_date(class="form-control", type="date") }}
+            </div>
+          </div>
+          <div class="mb-3">
+            {{ contract_form.gross_salary.label(class="form-label small fw-medium") }}
+            {{ contract_form.gross_salary(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ contract_form.weekly_hours.label(class="form-label small fw-medium") }}
+            {{ contract_form.weekly_hours(class="form-control") }}
+          </div>
+          <div class="form-check">
+            {{ contract_form.is_current(class="form-check-input") }}
+            {{ contract_form.is_current.label(class="form-check-label small") }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          {{ contract_form.submit(class="btn btn-primary") }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# ── Modal départ ──────────────────────────────────────────────────── #}
+{% if current_user.role.name in ['admin', 'rh'] and not employee.is_terminated %}
+<div class="modal fade" id="terminateModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('employees.terminate_employee', employee_id=employee.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Marquer le départ de {{ employee.full_name }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small fw-medium">Date de départ</label>
+            <input type="date" name="termination_date" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-medium">Motif</label>
+            <textarea name="termination_reason" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-danger">Confirmer le départ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

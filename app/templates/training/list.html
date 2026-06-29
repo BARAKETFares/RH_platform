@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Formations{% endblock %}
+{% block page_title %}Catalogue des formations{% endblock %}
+
+{% block page_actions %}
+{% set role = current_user.role.name if current_user.role else '' %}
+{% if role in ['admin', 'rh'] %}
+<a href="{{ url_for('training.new_training') }}" class="btn btn-primary">
+  <i class="bi bi-plus-lg me-1"></i>Nouvelle formation
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{# ── Filtres par type ──────────────────────────────────────────────── #}
+<div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+  <span class="text-muted small fw-semibold me-1">Mode :</span>
+  <a href="{{ url_for('training.list_trainings_view') }}"
+     class="btn btn-sm {{ 'btn-primary' if not current_type else 'btn-outline-secondary' }}">
+    Tous
+  </a>
+  <a href="{{ url_for('training.list_trainings_view', type='presentiel') }}"
+     class="btn btn-sm {{ 'btn-primary' if current_type == 'presentiel' else 'btn-outline-secondary' }}">
+    <i class="bi bi-building me-1"></i>Présentiel
+  </a>
+  <a href="{{ url_for('training.list_trainings_view', type='distanciel') }}"
+     class="btn btn-sm {{ 'btn-primary' if current_type == 'distanciel' else 'btn-outline-secondary' }}">
+    <i class="bi bi-camera-video me-1"></i>Distanciel
+  </a>
+  <a href="{{ url_for('training.list_trainings_view', type='e_learning') }}"
+     class="btn btn-sm {{ 'btn-primary' if current_type == 'e_learning' else 'btn-outline-secondary' }}">
+    <i class="bi bi-laptop me-1"></i>E-learning
+  </a>
+</div>
+
+{# ── Grille des formations ─────────────────────────────────────────── #}
+{% if trainings %}
+<div class="row g-3">
+  {% for t in trainings %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100">
+      <div class="card-body d-flex flex-column">
+
+        {# En-tête : type + titre #}
+        <div class="d-flex align-items-start gap-2 mb-2">
+          {% if t.training_type == 'presentiel' %}
+            <span class="badge bg-primary-subtle text-primary-emphasis">
+              <i class="bi bi-building me-1"></i>Présentiel
+            </span>
+          {% elif t.training_type == 'distanciel' %}
+            <span class="badge bg-info-subtle text-info-emphasis">
+              <i class="bi bi-camera-video me-1"></i>Distanciel
+            </span>
+          {% else %}
+            <span class="badge bg-success-subtle text-success-emphasis">
+              <i class="bi bi-laptop me-1"></i>E-learning
+            </span>
+          {% endif %}
+        </div>
+
+        <h6 class="card-title mb-1">{{ t.title }}</h6>
+
+        {% if t.organisme %}
+        <p class="text-muted small mb-2">
+          <i class="bi bi-building-gear me-1"></i>{{ t.organisme }}
+        </p>
+        {% endif %}
+
+        {% if t.description %}
+        <p class="card-text text-muted small flex-grow-1">
+          {{ t.description | truncate(120) }}
+        </p>
+        {% else %}
+        <div class="flex-grow-1"></div>
+        {% endif %}
+
+        {# Méta : durée + coût #}
+        <div class="d-flex gap-3 mt-2 mb-3 small text-muted">
+          {% if t.duration_hours %}
+          <span><i class="bi bi-clock me-1"></i>{{ t.duration_hours }}h</span>
+          {% endif %}
+          {% if t.cost is not none %}
+          <span><i class="bi bi-tag me-1"></i>{{ "%.0f"|format(t.cost) }} €</span>
+          {% endif %}
+          <span class="ms-auto">
+            <i class="bi bi-people me-1"></i>{{ t.active_enrollment_count }} inscrit{{ 's' if t.active_enrollment_count > 1 else '' }}
+          </span>
+        </div>
+
+        {# Actions #}
+        <div class="d-flex gap-2">
+          <a href="{{ url_for('training.training_detail', training_id=t.id) }}"
+             class="btn btn-sm btn-outline-primary flex-grow-1">
+            Voir
+          </a>
+          <a href="{{ url_for('training.enroll', training_id=t.id) }}"
+             class="btn btn-sm btn-primary flex-grow-1">
+            <i class="bi bi-person-plus me-1"></i>S'inscrire
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-mortarboard fs-1 d-block mb-3 opacity-25"></i>
+    <p class="mb-0">Aucune formation disponible dans le catalogue
+      {% if current_type %}pour ce mode de diffusion{% endif %}.
+    </p>
+    {% set role = current_user.role.name if current_user.role else '' %}
+    {% if role in ['admin', 'rh'] %}
+    <a href="{{ url_for('training.new_training') }}" class="btn btn-primary mt-3">
+      <i class="bi bi-plus-lg me-1"></i>Ajouter une formation
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

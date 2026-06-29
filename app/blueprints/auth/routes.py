@@ -80,6 +80,9 @@ def _safe_next() -> str:
     """
     Retourne l'URL cible après connexion.
     Accepte uniquement les redirections relatives (prévention open redirect).
+
+    TEMPORAIRE : redirige vers /leaves/ en attendant que le dashboard
+    (reporting.dashboard) soit implémenté — cf. roadmap Bloc E.
     """
     next_url = request.args.get("next", "")
     if next_url and next_url.startswith("/") and not next_url.startswith("//"):

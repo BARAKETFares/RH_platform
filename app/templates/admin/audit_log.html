@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Journal d'audit{% endblock %}
+{% block page_title %}Journal d'audit{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.list_users') }}">Administration</a></li>
+    <li class="breadcrumb-item active">Journal d'audit</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+
+{# ── Filtres ─────────────────────────────────────────────────────────────── #}
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label small fw-medium mb-1">{{ form.action.label.text }}</label>
+        {{ form.action(class="form-select form-select-sm") }}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-medium mb-1">{{ form.entity_type.label.text }}</label>
+        {{ form.entity_type(class="form-control form-control-sm") }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-medium mb-1">{{ form.user_email.label.text }}</label>
+        {{ form.user_email(class="form-control form-control-sm") }}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-medium mb-1">{{ form.date_from.label.text }}</label>
+        {{ form.date_from(class="form-control form-control-sm", type="date") }}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-medium mb-1">{{ form.date_to.label.text }}</label>
+        {{ form.date_to(class="form-control form-control-sm", type="date") }}
+      </div>
+      <div class="col-md-1 d-flex gap-1">
+        <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+          <i class="bi bi-search"></i>
+        </button>
+        <a href="{{ url_for('admin.audit_log') }}" class="btn btn-sm btn-outline-secondary"
+           title="Réinitialiser les filtres">
+          <i class="bi bi-x"></i>
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Tableau ──────────────────────────────────────────────────────────────── #}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 small">
+      <thead class="table-light">
+        <tr>
+          <th style="width:140px;">Date</th>
+          <th>Utilisateur</th>
+          <th style="width:140px;">Action</th>
+          <th>Ressource</th>
+          <th>Champs modifiés</th>
+          <th style="width:120px;">IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        {% set action_styles = {
+          'create':           ('success', 'plus-circle'),
+          'update':           ('primary', 'pencil'),
+          'delete':           ('danger',  'trash'),
+          'login':            ('info',    'box-arrow-in-right'),
+          'logout':           ('secondary','box-arrow-right'),
+          'login_failed':     ('warning', 'exclamation-triangle'),
+          'export':           ('teal',    'download'),
+          'approve':          ('success', 'check-circle'),
+          'reject':           ('danger',  'x-circle'),
+          'cancel':           ('secondary','slash-circle'),
+          'password_change':  ('warning', 'key'),
+          'permission_change':('danger',  'shield-exclamation'),
+          'upload':           ('info',    'upload'),
+          'download':         ('info',    'download'),
+          'read':             ('secondary','eye'),
+        } %}
+        {% set style = action_styles.get(log.action, ('secondary', 'question')) %}
+        <tr class="{{ 'table-warning' if log.action == 'login_failed' else ('table-danger bg-opacity-10' if log.action in ['delete', 'permission_change'] else '') }}">
+          <td class="text-muted text-nowrap">
+            {{ log.created_at.strftime('%d/%m/%Y') }}<br>
+            <span class="opacity-75">{{ log.created_at.strftime('%H:%M:%S') }}</span>
+          </td>
+          <td>
+            {% if log.user_email %}
+            <span class="fw-medium">{{ log.user_email }}</span>
+            {% else %}
+            <span class="text-muted fst-italic">Système</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge bg-{{ style[0] }}-subtle text-{{ style[0] }} border border-{{ style[0] }}-subtle text-nowrap">
+              <i class="bi bi-{{ style[1] }} me-1"></i>{{ log.action }}
+            </span>
+          </td>
+          <td>
+            {% if log.entity_type %}
+            <code class="text-dark">{{ log.entity_type }}</code>
+            {% if log.entity_id %}
+            <span class="text-muted"> #{{ log.entity_id }}</span>
+            {% endif %}
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if log.changed_fields %}
+            <div class="d-flex flex-wrap gap-1">
+              {% for field in log.changed_fields[:5] %}
+              <span class="badge bg-light text-dark border">{{ field }}</span>
+              {% endfor %}
+              {% if log.changed_fields | length > 5 %}
+              <span class="badge bg-light text-muted border">+{{ log.changed_fields | length - 5 }}</span>
+              {% endif %}
+            </div>
+            {% elif log.extra_data %}
+            <span class="text-muted fst-italic small">
+              {% for k, v in log.extra_data.items() | list %}{% if not loop.last %}{{ k }}={{ v }}, {% else %}{{ k }}={{ v }}{% endif %}{% endfor %}
+            </span>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-muted">
+            {{ log.ip_address | string | truncate(15, True, '…') if log.ip_address else '—' }}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-5">
+            <i class="bi bi-journal-text fs-2 d-block mb-2 opacity-25"></i>
+            Aucune entrée dans le journal pour ces critères.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.total > 0 %}
+  <div class="card-footer d-flex justify-content-between align-items-center py-2">
+    <span class="text-muted small">
+      {{ pagination.total }} entrée{{ 's' if pagination.total > 1 }}
+      — page {{ pagination.page }}/{{ pagination.pages }}
+    </span>
+    {% if pagination.pages > 1 %}
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+          <a class="page-link"
+             href="{{ url_for('admin.audit_log', page=pagination.prev_num,
+                              action=request.args.get('action',''),
+                              entity_type=request.args.get('entity_type',''),
+                              user_email=request.args.get('user_email',''),
+                              date_from=request.args.get('date_from',''),
+                              date_to=request.args.get('date_to','')) }}">«</a>
+        </li>
+        {% for p in range([1, pagination.page - 2] | max, [pagination.pages, pagination.page + 2] | min + 1) %}
+        <li class="page-item {{ 'active' if p == pagination.page }}">
+          <a class="page-link"
+             href="{{ url_for('admin.audit_log', page=p,
+                              action=request.args.get('action',''),
+                              entity_type=request.args.get('entity_type',''),
+                              user_email=request.args.get('user_email',''),
+                              date_from=request.args.get('date_from',''),
+                              date_to=request.args.get('date_to','')) }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+          <a class="page-link"
+             href="{{ url_for('admin.audit_log', page=pagination.next_num,
+                              action=request.args.get('action',''),
+                              entity_type=request.args.get('entity_type',''),
+                              user_email=request.args.get('user_email',''),
+                              date_from=request.args.get('date_from',''),
+                              date_to=request.args.get('date_to','')) }}">»</a>
+        </li>
+      </ul>
+    </nav>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

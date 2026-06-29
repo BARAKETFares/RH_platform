@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Nouvelle candidature — {{ posting.title }}{% endblock %}
+{% block page_title %}Nouvelle candidature{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('recruitment.posting_detail', posting_id=posting.id) }}"
+   class="btn btn-outline-secondary">
+  ← Retour à l'offre
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    {# ── Rappel du poste ───────────────────────────────────────────────── #}
+    <div class="card mb-3 border-0 bg-light">
+      <div class="card-body py-3">
+        <div class="d-flex align-items-center gap-3">
+          <i class="bi bi-briefcase text-primary fs-4"></i>
+          <div>
+            <div class="fw-semibold">{{ posting.title }}</div>
+            <div class="text-muted small">
+              {% if posting.department %}{{ posting.department.name }} — {% endif %}
+              {% if posting.location %}{{ posting.location }} — {% endif %}
+              {{ posting.contract_type or 'CDI' }}
+            </div>
+          </div>
+          <span class="badge bg-success ms-auto">Ouverte</span>
+        </div>
+      </div>
+    </div>
+
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+
+      {# ── Identité du candidat ──────────────────────────────────────── #}
+      <div class="card mb-3">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-person me-2"></i>Identité du candidat
+        </div>
+        <div class="card-body">
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.first_name.label(class="form-label fw-medium") }}
+              {{ form.first_name(class="form-control" + (" is-invalid" if form.first_name.errors else "")) }}
+              {% for err in form.first_name.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.last_name.label(class="form-label fw-medium") }}
+              {{ form.last_name(class="form-control" + (" is-invalid" if form.last_name.errors else "")) }}
+              {% for err in form.last_name.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-7">
+              {{ form.email.label(class="form-label fw-medium") }}
+              {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+              {% for err in form.email.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+              <div class="form-text">
+                Si cet e-mail correspond à un candidat existant dans le vivier, sa fiche sera réutilisée.
+              </div>
+            </div>
+            <div class="col-md-5">
+              {{ form.phone.label(class="form-label fw-medium") }}
+              {{ form.phone(class="form-control" + (" is-invalid" if form.phone.errors else "")) }}
+              {% for err in form.phone.errors %}
+                <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-0">
+            {{ form.source.label(class="form-label fw-medium") }}
+            {{ form.source(class="form-select" + (" is-invalid" if form.source.errors else "")) }}
+            {% for err in form.source.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+        </div>
+      </div>
+
+      {# ── CV & Notes ────────────────────────────────────────────────── #}
+      <div class="card mb-4">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-file-text me-2"></i>CV & Observations
+        </div>
+        <div class="card-body">
+
+          <div class="mb-3">
+            {{ form.cv_text.label(class="form-label fw-medium") }}
+            {{ form.cv_text(class="form-control" + (" is-invalid" if form.cv_text.errors else "")) }}
+            {% for err in form.cv_text.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-0">
+            {{ form.notes.label(class="form-label fw-medium") }}
+            {{ form.notes(class="form-control" + (" is-invalid" if form.notes.errors else "")) }}
+            {% for err in form.notes.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('recruitment.posting_detail', posting_id=posting.id) }}"
+           class="btn btn-outline-secondary">Annuler</a>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endblock %}

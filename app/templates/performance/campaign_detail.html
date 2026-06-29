@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}{{ campaign.name }}{% endblock %}
+{% block page_title %}{{ campaign.name }}{% endblock %}
+
+{% block content %}
+
+<div class="row g-4 mb-4">
+  <div class="col-md-4">
+    <div class="card kpi-card h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Évaluations lancées</div>
+        <div class="kpi-value text-primary">{{ campaign.evaluation_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card kpi-card h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Terminées</div>
+        <div class="kpi-value text-success">{{ campaign.completed_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card kpi-card h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Taux de complétion</div>
+        <div class="kpi-value text-info">{{ campaign.completion_rate_pct }}%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header fw-semibold">Informations</div>
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-3 text-muted small">Période</dt>
+      <dd class="col-9">{{ campaign.start_date | date_fr }} → {{ campaign.end_date | date_fr }}</dd>
+
+      {% if campaign.objective_deadline %}
+      <dt class="col-3 text-muted small">Date limite objectifs</dt>
+      <dd class="col-9">{{ campaign.objective_deadline | date_fr }}</dd>
+      {% endif %}
+
+      {% if campaign.description %}
+      <dt class="col-3 text-muted small">Description</dt>
+      <dd class="col-9">{{ campaign.description }}</dd>
+      {% endif %}
+    </dl>
+  </div>
+</div>
+
+{# ── Formulaire d'ajout d'un participant ──────────────────────────────── #}
+<div class="card mb-4 border-primary">
+  <div class="card-header bg-primary-subtle fw-semibold">
+    <i class="bi bi-person-plus me-2"></i>Ajouter un participant à la campagne
+  </div>
+  <div class="card-body">
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          {{ form.employee_id.label(class="form-label fw-medium") }}
+          {{ form.employee_id(class="form-select" + (" is-invalid" if form.employee_id.errors else "")) }}
+          {% for err in form.employee_id.errors %}
+          <div class="invalid-feedback">{{ err }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-4">
+          {{ form.evaluator_id.label(class="form-label fw-medium") }}
+          {{ form.evaluator_id(class="form-select" + (" is-invalid" if form.evaluator_id.errors else "")) }}
+          {% for err in form.evaluator_id.errors %}
+          <div class="invalid-feedback">{{ err }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-4">
+          {{ form.submit(class="btn btn-primary w-100") }}
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Table des évaluations ────────────────────────────────────────────── #}
+<div class="card">
+  <div class="card-header fw-semibold">
+    Évaluations de cette campagne
+    <span class="badge bg-secondary ms-1">{{ evaluations | length }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Employé</th>
+          <th>Évaluateur</th>
+          <th>Score</th>
+          <th>Statut</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set status_colors = {
+          'draft': 'secondary', 'in_progress': 'info', 'employee_review': 'warning',
+          'completed': 'success', 'archived': 'dark'
+        } %}
+        {% for ev in evaluations %}
+        <tr>
+          <td>{{ ev.employee.full_name }}</td>
+          <td>{{ ev.evaluator.full_name }}</td>
+          <td>{{ ev.overall_score if ev.overall_score else '—' }}</td>
+          <td>
+            <span class="badge bg-{{ status_colors.get(ev.status, 'secondary') }}">
+              {{ ev.status | replace('_', ' ') | capitalize }}
+            </span>
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('performance.evaluation_detail', evaluation_id=ev.id) }}"
+               class="btn btn-sm btn-outline-primary">Voir</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">
+            <i class="bi bi-people fs-3 d-block mb-2"></i>
+            Aucun participant ajouté. Utilisez le formulaire ci-dessus.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<a href="{{ url_for('performance.list_campaigns') }}" class="btn btn-link mt-3 text-muted">
+  ← Retour aux campagnes
+</a>
+
+{% endblock %}

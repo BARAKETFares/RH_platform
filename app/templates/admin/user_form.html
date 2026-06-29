@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Modifier le compte' if user else 'Nouvel utilisateur' }}{% endblock %}
+{% block page_title %}{{ 'Modifier — ' + user.email if user else 'Nouvel utilisateur' }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.list_users') }}">Administration</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('admin.list_users') }}">Utilisateurs</a></li>
+    <li class="breadcrumb-item active">{{ 'Modifier' if user else 'Créer' }}</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+
+    {% if user and user.is_locked %}
+    <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-lock-fill fs-5"></i>
+      <div>
+        Ce compte est <strong>verrouillé</strong>.
+        Enregistrez le formulaire pour le déverrouiller (si vous changez le statut).
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-body p-4">
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          {# ── Identifiants ──────────────────────────────────────────────── #}
+          <h6 class="text-muted text-uppercase small fw-semibold mb-3">
+            <i class="bi bi-person me-1"></i>Identifiants
+          </h6>
+          <div class="row g-3 mb-4">
+            <div class="col-12">
+              {{ form.email.label(class="form-label fw-medium") }}
+              {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""),
+                            type="email", autocomplete="off") }}
+              {% for err in form.email.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+
+            {% if not user %}
+            {# Création : mot de passe obligatoire #}
+            <div class="col-md-6">
+              {{ form.password.label(class="form-label fw-medium") }}
+              {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""),
+                               autocomplete="new-password") }}
+              {% for err in form.password.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+              <div class="form-text">Min. 8 caractères, 1 majuscule, 1 chiffre.</div>
+            </div>
+            <div class="col-md-6">
+              {{ form.password_confirm.label(class="form-label fw-medium") }}
+              {{ form.password_confirm(class="form-control" + (" is-invalid" if form.password_confirm.errors else ""),
+                                       autocomplete="new-password") }}
+              {% for err in form.password_confirm.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+            {% else %}
+            {# Édition : réinitialisation optionnelle #}
+            <div class="col-12">
+              <hr class="my-1">
+              <label class="form-label fw-medium">{{ form.new_password.label.text }}</label>
+              {{ form.new_password(class="form-control" + (" is-invalid" if form.new_password.errors else ""),
+                                   autocomplete="new-password",
+                                   placeholder="Laisser vide pour conserver l'actuel") }}
+              {% for err in form.new_password.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+              <div class="form-text">Min. 8 caractères, 1 majuscule, 1 chiffre.</div>
+            </div>
+            {% endif %}
+          </div>
+
+          {# ── Rôle & Accès ──────────────────────────────────────────────── #}
+          <h6 class="text-muted text-uppercase small fw-semibold mb-3">
+            <i class="bi bi-shield me-1"></i>Rôle & Accès
+          </h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              {{ form.role_id.label(class="form-label fw-medium") }}
+              {{ form.role_id(class="form-select" + (" is-invalid" if form.role_id.errors else "")) }}
+              {% for err in form.role_id.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+              {% endfor %}
+            </div>
+
+            {% if not user %}
+            <div class="col-md-6">
+              {{ form.preferred_language.label(class="form-label fw-medium") }}
+              {{ form.preferred_language(class="form-select") }}
+            </div>
+            {% endif %}
+
+            <div class="col-12">
+              {{ form.employee_id.label(class="form-label fw-medium") }}
+              {{ form.employee_id(class="form-select") }}
+              <div class="form-text">
+                Sans fiche employé, l'utilisateur ne verra que le tableau de bord.
+                {% if user and current_employee %}
+                Actuellement lié à <strong>{{ current_employee.full_name }}</strong>.
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          {# ── Options du compte ─────────────────────────────────────────── #}
+          <h6 class="text-muted text-uppercase small fw-semibold mb-3">
+            <i class="bi bi-toggle-on me-1"></i>Options du compte
+          </h6>
+          <div class="row g-2 mb-4">
+            <div class="col-md-4">
+              <div class="form-check form-switch">
+                {{ form.is_active(class="form-check-input") }}
+                {{ form.is_active.label(class="form-check-label") }}
+              </div>
+            </div>
+            {% if user %}
+            <div class="col-md-4">
+              <div class="form-check form-switch">
+                {{ form.is_email_verified(class="form-check-input") }}
+                {{ form.is_email_verified.label(class="form-check-label") }}
+              </div>
+            </div>
+            {% endif %}
+            <div class="col-md-4">
+              <div class="form-check form-switch">
+                {{ form.force_password_change(class="form-check-input") }}
+                {{ form.force_password_change.label(class="form-check-label") }}
+              </div>
+            </div>
+          </div>
+
+          {# ── Infos en lecture seule (édition uniquement) ───────────────── #}
+          {% if user %}
+          <div class="rounded bg-light border px-3 py-2 mb-4 small text-muted">
+            <div class="row g-1">
+              <div class="col-sm-4"><strong>UUID :</strong> <code>{{ user.uuid }}</code></div>
+              <div class="col-sm-4">
+                <strong>Tentatives échouées :</strong> {{ user.failed_login_attempts }}
+              </div>
+              <div class="col-sm-4">
+                <strong>2FA :</strong>
+                {% if user.totp_enabled %}
+                <span class="text-success"><i class="bi bi-shield-check"></i> Activé</span>
+                {% else %}
+                <span class="text-muted"><i class="bi bi-shield"></i> Désactivé</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          {# ── Actions ───────────────────────────────────────────────────── #}
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('admin.list_users') }}" class="btn btn-outline-secondary">
+              Annuler
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

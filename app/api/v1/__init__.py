@@ -9,10 +9,10 @@ from flask import Blueprint
 bp: Blueprint = Blueprint("api_v1", __name__)
 
 # Import des sous-modules de ressources
-from . import (  # noqa: F401, E402
-    employees,
-    absences,
+# APRÈS
+from . import (
     auth,
+    employees,
+    leaves,
     evaluations,
-    reporting,
 )
