@@ -75,10 +75,15 @@
         <tr>
           <td>
             <div class="d-flex align-items-center gap-2">
+              {% if emp.user and emp.user.avatar_path %}
+              <img src="{{ url_for('auth.avatar_get', user_id=emp.user.id) }}" alt="Photo de {{ emp.full_name }}"
+                   class="rounded-circle" style="width:36px;height:36px;object-fit:cover;">
+              {% else %}
               <span class="avatar-circle bg-primary-subtle text-primary"
                     style="width:36px;height:36px;font-size:0.8rem;">
                 {{ emp.initials }}
               </span>
+              {% endif %}
               <div>
                 <div class="fw-medium">{{ emp.full_name }}</div>
                 {% if emp.employee_number %}
