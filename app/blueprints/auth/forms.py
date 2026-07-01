@@ -15,6 +15,7 @@ Utilisation dans un template :
 from __future__ import annotations
 
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileAllowed, FileField, FileRequired, FileSize
 from wtforms import BooleanField, EmailField, PasswordField, SubmitField
 from wtforms.validators import (
     DataRequired,
@@ -347,3 +348,18 @@ class DisableTwoFactorForm(FlaskForm):
     )
 
     submit = SubmitField(label="Désactiver le 2FA")
+
+
+class AvatarUploadForm(FlaskForm):
+    """Formulaire d'upload de la photo de profil (PNG/JPG, 2 Mo max)."""
+
+    avatar = FileField(
+        label="Photo de profil",
+        validators=[
+            FileRequired(message="Sélectionnez une image."),
+            FileAllowed(["png", "jpg", "jpeg"], "Seuls les fichiers PNG et JPG sont acceptés."),
+            FileSize(max_size=2 * 1024 * 1024, message="L'image ne doit pas dépasser 2 Mo."),
+        ],
+    )
+
+    submit = SubmitField(label="Mettre à jour la photo")

@@ -115,6 +115,12 @@ class User(UserMixin, db.Model):
         String(64), nullable=False, default="Europe/Paris"
     )
 
+    # ── Avatar ────────────────────────────────────────────────────────────────
+    avatar_path: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True,
+        comment="Chemin relatif depuis UPLOAD_FOLDER — pas de donnée sensible, non chiffré",
+    )
+
     # ── Timestamps ────────────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow

@@ -10,10 +10,16 @@
   <div class="col-lg-4">
     <div class="card text-center">
       <div class="card-body">
+        {% if user.avatar_path %}
+        <img src="{{ url_for('auth.avatar_get', user_id=user.id) }}" alt="Photo de profil"
+             class="rounded-circle mx-auto mb-3 d-block"
+             style="width:80px;height:80px;object-fit:cover;">
+        {% else %}
         <div class="avatar-circle bg-primary-subtle text-primary mx-auto mb-3"
              style="width:80px;height:80px;font-size:1.5rem;">
           {{ (user.employee.full_name if user.employee else user.email) | initials }}
         </div>
+        {% endif %}
         <h5 class="mb-1">
           {{ user.employee.full_name if user.employee else user.email }}
         </h5>
@@ -22,6 +28,29 @@
           <i class="bi bi-shield-{{ 'check' if user.totp_enabled else 'exclamation' }} me-1"></i>
           2FA {{ 'activé' if user.totp_enabled else 'désactivé' }}
         </span>
+      </div>
+    </div>
+
+    {# Upload photo de profil #}
+    <div class="card mt-3">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-camera me-2"></i>Photo de profil
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('auth.profile_avatar_post') }}"
+              enctype="multipart/form-data" novalidate>
+          {{ avatar_form.hidden_tag() }}
+          <div class="mb-2">
+            {{ avatar_form.avatar(class="form-control form-control-sm" ~ (" is-invalid" if avatar_form.avatar.errors else ""), accept=".png,.jpg,.jpeg") }}
+            {% if avatar_form.avatar.errors %}
+            <div class="invalid-feedback d-block">
+              {% for error in avatar_form.avatar.errors %}<div>{{ error }}</div>{% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          <small class="text-muted d-block mb-2">Formats PNG ou JPG — 2 Mo max.</small>
+          {{ avatar_form.submit(class="btn btn-sm btn-outline-primary w-100") }}
+        </form>
       </div>
     </div>
   </div>

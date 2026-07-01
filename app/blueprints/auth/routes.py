@@ -26,12 +26,17 @@ Flux changement mot de passe :
 from __future__ import annotations
 
 import logging
+import uuid
+from pathlib import Path
 
 from flask import (
+    abort,
+    current_app,
     flash,
     redirect,
     render_template,
     request,
+    send_from_directory,
     session,
     url_for,
 )
@@ -41,6 +46,7 @@ from flask_login import (
     login_user,
     logout_user as _flask_logout,
 )
+from werkzeug.utils import secure_filename
 
 from app.extensions import limiter
 from app.models.user import PasswordResetToken, User
@@ -56,6 +62,7 @@ from app.utils.decorators import require_permission, require_role
 from app.utils.exceptions import AuthenticationError, BusinessRuleError, ValidationError
 from . import bp
 from .forms import (
+    AvatarUploadForm,
     ChangePasswordForm,
     DisableTwoFactorForm,
     LoginForm,
@@ -498,6 +505,60 @@ def profile_get():
         user=current_user,
         pending_leaves=pending_leaves,
         leave_balances=leave_balances,
+        avatar_form=AvatarUploadForm(),
+    )
+
+
+@bp.post("/profile/avatar")
+@login_required
+def profile_avatar_post():
+    """Sauvegarde la photo de profil de l'utilisateur connecté."""
+    form = AvatarUploadForm()
+    if not form.validate_on_submit():
+        for error in form.avatar.errors:
+            flash(error, "error")
+        return redirect(url_for("auth.profile_get"))
+
+    avatar_file = form.avatar.data
+    safe_name = secure_filename(avatar_file.filename)
+    ext = safe_name.rsplit(".", 1)[-1].lower()
+    filename = f"{uuid.uuid4().hex}_{current_user.id}.{ext}"
+
+    upload_dir = Path(current_app.config["UPLOAD_FOLDER"]) / "avatars"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    avatar_file.save(upload_dir / filename)
+
+    from app.extensions import db
+
+    old_avatar_path = current_user.avatar_path
+    current_user.avatar_path = str(Path("avatars") / filename)
+    db.session.commit()
+
+    if old_avatar_path:
+        old_full_path = Path(current_app.config["UPLOAD_FOLDER"]) / old_avatar_path
+        old_full_path.unlink(missing_ok=True)
+
+    flash("Photo de profil mise à jour.", "success")
+    return redirect(url_for("auth.profile_get"))
+
+
+@bp.get("/avatar/<int:user_id>")
+@login_required
+def avatar_get(user_id: int):
+    """Sert la photo de profil d'un utilisateur (réservé aux utilisateurs connectés)."""
+    user = User.get_or_404(user_id)
+    if not user.avatar_path:
+        abort(404, description="Aucune photo de profil pour cet utilisateur.")
+
+    upload_dir = Path(current_app.config["UPLOAD_FOLDER"])
+    avatar_full = upload_dir / user.avatar_path
+    ext = avatar_full.suffix.lower().lstrip(".")
+    mimetype = "image/jpeg" if ext in ("jpg", "jpeg") else "image/png"
+
+    return send_from_directory(
+        avatar_full.parent,
+        avatar_full.name,
+        mimetype=mimetype,
     )
 
 
