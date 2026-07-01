@@ -470,7 +470,35 @@ def disable_2fa_post():
 @login_required
 def profile_get():
     """Page de profil de l'utilisateur connecté."""
-    return render_template("auth/profile.html", user=current_user)
+    pending_leaves = None
+    leave_balances = []
+
+    if current_user.employee and current_user.role.name in ("employee", "manager"):
+        from datetime import date
+
+        from app.extensions import db
+        from app.models.leave_request import LeaveRequest
+        from app.services.leave_service import calculate_all_balances
+        from app.utils.exceptions import NotFoundError
+
+        employee_id = current_user.employee.id
+        pending_leaves = db.session.execute(
+            db.select(db.func.count(LeaveRequest.id)).where(
+                LeaveRequest.employee_id == employee_id,
+                LeaveRequest.status.in_(LeaveRequest.PENDING_STATUSES),
+            )
+        ).scalar_one()
+        try:
+            leave_balances = calculate_all_balances(employee_id, date.today().year)
+        except NotFoundError:
+            leave_balances = []
+
+    return render_template(
+        "auth/profile.html",
+        user=current_user,
+        pending_leaves=pending_leaves,
+        leave_balances=leave_balances,
+    )
 
 
 # =============================================================================

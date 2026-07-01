@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Mon profil{% endblock %}
+{% block page_title %}Mon profil{% endblock %}
+
+{% block content %}
+
+<div class="row g-3">
+
+  {# ── Colonne latérale : avatar + identité ──────────────────────────── #}
+  <div class="col-lg-4">
+    <div class="card text-center">
+      <div class="card-body">
+        <div class="avatar-circle bg-primary-subtle text-primary mx-auto mb-3"
+             style="width:80px;height:80px;font-size:1.5rem;">
+          {{ (user.employee.full_name if user.employee else user.email) | initials }}
+        </div>
+        <h5 class="mb-1">
+          {{ user.employee.full_name if user.employee else user.email }}
+        </h5>
+        <p class="text-muted small mb-3">{{ user.role.label }}</p>
+        <span class="badge {{ 'bg-success' if user.totp_enabled else 'bg-secondary' }}">
+          <i class="bi bi-shield-{{ 'check' if user.totp_enabled else 'exclamation' }} me-1"></i>
+          2FA {{ 'activé' if user.totp_enabled else 'désactivé' }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  {# ── Colonne principale : informations + sécurité ──────────────────── #}
+  <div class="col-lg-8">
+
+    {# Informations du compte #}
+    <div class="card mb-3">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-person-badge me-2"></i>Informations du compte
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4 text-muted">Email</dt>
+          <dd class="col-sm-8">{{ user.email }}</dd>
+
+          <dt class="col-sm-4 text-muted">Rôle</dt>
+          <dd class="col-sm-8">{{ user.role.label }}</dd>
+
+          <dt class="col-sm-4 text-muted">Compte créé le</dt>
+          <dd class="col-sm-8">{{ user.created_at | date_fr }}</dd>
+
+          <dt class="col-sm-4 text-muted">Dernière connexion</dt>
+          <dd class="col-sm-8">{{ user.last_login_at | date_fr if user.last_login_at else '—' }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    {# Informations professionnelles (si fiche employé liée) #}
+    {% if user.employee %}
+    <div class="card mb-3">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-briefcase me-2"></i>Informations professionnelles
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4 text-muted">Département</dt>
+          <dd class="col-sm-8">{{ user.employee.department.name if user.employee.department else '—' }}</dd>
+
+          <dt class="col-sm-4 text-muted">Poste</dt>
+          <dd class="col-sm-8">{{ user.employee.position.title if user.employee.position else '—' }}</dd>
+
+          <dt class="col-sm-4 text-muted">Manager</dt>
+          <dd class="col-sm-8">{{ user.employee.manager.full_name if user.employee.manager else '—' }}</dd>
+
+          <dt class="col-sm-4 text-muted">Date d'embauche</dt>
+          <dd class="col-sm-8">{{ user.employee.hire_date | date_fr }}</dd>
+        </dl>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle me-2"></i>
+      Votre compte n'est pas encore lié à une fiche employé.
+    </div>
+    {% endif %}
+
+    {# Mes congés — employee / manager uniquement #}
+    {% if pending_leaves is not none %}
+    <div class="card mb-3">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-calendar-week me-2"></i>Mes congés
+      </div>
+      <div class="card-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <div class="text-muted small text-uppercase fw-semibold mb-1">Demandes en attente</div>
+            <div class="kpi-value text-warning">{{ pending_leaves }}</div>
+          </div>
+        </div>
+        {% if leave_balances %}
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Type de congé</th>
+                <th class="text-end">Solde disponible</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for balance in leave_balances %}
+              <tr>
+                <td>{{ balance.leave_type.name }}</td>
+                <td class="text-end">{{ balance.available | days_label }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">Aucun solde de congés disponible pour l'année en cours.</p>
+        {% endif %}
+        <a href="{{ url_for('leaves.my_requests') }}" class="small text-decoration-none d-inline-block mt-3">
+          Voir mes demandes →
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    {# Sécurité #}
+    <div class="card">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-shield-lock me-2"></i>Sécurité
+      </div>
+      <div class="card-body d-flex flex-wrap gap-2">
+        <a href="{{ url_for('auth.change_password_get') }}" class="btn btn-outline-primary">
+          <i class="bi bi-key me-1"></i>Changer le mot de passe
+        </a>
+        {% if user.totp_enabled %}
+        <a href="{{ url_for('auth.disable_2fa_get') }}" class="btn btn-outline-danger">
+          <i class="bi bi-shield-x me-1"></i>Désactiver le 2FA
+        </a>
+        {% else %}
+        <a href="{{ url_for('auth.setup_2fa_get') }}" class="btn btn-outline-success">
+          <i class="bi bi-shield-plus me-1"></i>Activer le 2FA
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
