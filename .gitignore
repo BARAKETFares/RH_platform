@@ -36,6 +36,9 @@ e2e_output*.txt
 # ── Storage (uploads, bulletins PDF) ─────────────────────────────────────
 storage/
 
+# ── Backups pg_dump (données réelles, jamais dans git) ────────────────────
+backups/
+
 # ── Tests ─────────────────────────────────────────────────────────────────
 .pytest_cache/
 .coverage
