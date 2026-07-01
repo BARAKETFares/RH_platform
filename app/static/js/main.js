@@ -54,6 +54,19 @@ document.addEventListener('DOMContentLoaded', () => {
     .forEach(alert => setTimeout(() => {
       bootstrap.Alert.getOrCreateInstance(alert)?.close();
     }, 5000));
+
+  // Afficher / masquer un champ mot de passe (bouton [data-password-toggle="<id-du-champ>"])
+  document.querySelectorAll('[data-password-toggle]').forEach(btn => {
+    const input = document.getElementById(btn.dataset.passwordToggle);
+    const icon  = btn.querySelector('i');
+    if (!input || !icon) return;
+    btn.addEventListener('click', () => {
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      icon.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+      btn.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+    });
+  });
 });
 
 // ── Utilitaires ──────────────────────────────────────────────────────────────
