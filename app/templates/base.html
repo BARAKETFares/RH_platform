@@ -27,8 +27,7 @@
 
     {# ── Sidebar dynamique selon le rôle ──────────────────────────────── #}
     {% set role = current_user.role.name if current_user.is_authenticated else '' %}
-    <nav id="sidebar" class="bg-white border-end"
-         style="min-width: 240px; min-height: calc(100vh - 56px);">
+    <nav id="sidebar" class="collapse d-lg-block bg-white border-end">
       <div class="p-3">
         <ul class="nav flex-column gap-1">
 

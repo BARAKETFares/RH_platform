@@ -1,4 +1,10 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary px-3">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary px-3 sticky-top">
+  {# Toggler sidebar — mobile uniquement #}
+  <button class="btn btn-link text-white d-lg-none p-0 me-3" type="button"
+          data-bs-toggle="collapse" data-bs-target="#sidebar"
+          aria-controls="sidebar" aria-expanded="false" aria-label="Ouvrir le menu">
+    <i class="bi bi-list fs-3"></i>
+  </button>
   <a class="navbar-brand fw-bold" href="{{ url_for('reporting.dashboard') }}">
     <i class="bi bi-people-fill me-2"></i>{{ config.APP_NAME }}
   </a>
@@ -10,11 +16,21 @@
     </a>
     {# Avatar utilisateur #}
     <div class="dropdown">
-      <a class="text-white dropdown-toggle text-decoration-none" href="#" data-bs-toggle="dropdown">
-        {{ current_user.employee.first_name | default('Compte') }}
+      <a class="text-white dropdown-toggle text-decoration-none d-flex align-items-center gap-2"
+         href="#" data-bs-toggle="dropdown">
+        <span class="avatar-circle bg-white text-primary" style="width:32px;height:32px;font-size:0.75rem;">
+          {{ (current_user.employee.full_name if current_user.employee else current_user.email) | initials }}
+        </span>
+        <span class="d-none d-md-inline">
+          {{ current_user.employee.first_name | default('Compte') }}
+        </span>
       </a>
       <ul class="dropdown-menu dropdown-menu-end">
-        <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Mon profil</a></li>
+        <li>
+          <a class="dropdown-item" href="{{ url_for('auth.profile_get') }}">
+            <i class="bi bi-person me-2"></i>Mon profil
+          </a>
+        </li>
         <li><hr class="dropdown-divider"></li>
         <li>
           <a class="dropdown-item text-danger" href="{{ url_for('auth.logout_get') }}">
