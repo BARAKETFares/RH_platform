@@ -25,7 +25,7 @@ def add_security_headers(response: Response) -> Response:
             "default-src 'self'; "
             "script-src 'self' 'nonce-{nonce}' cdn.jsdelivr.net cdnjs.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com; "
-            "font-src 'self' fonts.gstatic.com; "
+            "font-src 'self' cdn.jsdelivr.net fonts.gstatic.com; "
             "img-src 'self' data: blob:; "
             "connect-src 'self'; "
             "frame-ancestors 'none';"
