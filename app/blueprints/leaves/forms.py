@@ -16,10 +16,11 @@ from __future__ import annotations
 from datetime import date
 
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileAllowed, FileField
 from wtforms import (
     BooleanField,
     DateField,
-    HiddenField,
+    DecimalField,
     RadioField,
     SelectField,
     StringField,
@@ -95,9 +96,12 @@ class LeaveRequestForm(FlaskForm):
         },
     )
 
-    document_path = HiddenField(
-        "Justificatif",
-        validators=[OptionalValidator()],
+    document_file = FileField(
+        "Justificatif (obligatoire pour Maladie, Maternité, Paternité)",
+        validators=[
+            OptionalValidator(),
+            FileAllowed(["pdf", "png", "jpg", "jpeg"], "Formats acceptés : PDF, PNG, JPG."),
+        ],
     )
 
     is_emergency = BooleanField(
@@ -214,3 +218,58 @@ class LeaveCancelForm(FlaskForm):
     )
 
     submit = SubmitField("Confirmer l'annulation")
+
+
+# =============================================================================
+# LeaveBalanceAdjustForm — régularisation manuelle d'un solde (RH/Admin)
+# =============================================================================
+
+class LeaveBalanceAdjustForm(FlaskForm):
+    """
+    Formulaire de régularisation manuelle d'un solde de congés (RH/Admin).
+
+    Correspond à app.services.leave_service.adjust_balance() : le motif
+    est obligatoire pour la traçabilité, et le nombre de jours peut être
+    positif (crédit) ou négatif (retrait), mais jamais nul.
+    """
+
+    leave_type_id = SelectField(
+        "Type d'absence",
+        coerce=int,
+        validators=[DataRequired(message="Veuillez sélectionner un type d'absence.")],
+    )
+
+    days = DecimalField(
+        "Jours à ajouter (négatif pour retirer)",
+        validators=[DataRequired(message="Veuillez indiquer un nombre de jours.")],
+        places=2,
+    )
+
+    reason = TextAreaField(
+        "Motif de la régularisation",
+        validators=[
+            DataRequired(message="Le motif est obligatoire pour la traçabilité."),
+            Length(max=500, message="Le motif ne peut pas dépasser 500 caractères."),
+        ],
+        render_kw={"rows": 2, "placeholder": "Ex: erreur de saisie, report exceptionnel..."},
+    )
+
+    submit = SubmitField("Appliquer la régularisation")
+
+    def populate_leave_types(self, company_id: int) -> None:
+        """Charge les types d'absence actifs de l'entreprise (même pattern que LeaveRequestForm)."""
+        from app.models.leave_type import LeaveType
+        from app.extensions import db
+
+        leave_types = db.session.execute(
+            LeaveType.active_in_company(company_id)
+        ).scalars().all()
+
+        self.leave_type_id.choices = [
+            (lt.id, lt.display_label) for lt in leave_types
+        ]
+
+    def validate_days(self, field: DecimalField) -> None:
+        """Interdit un ajustement nul — cohérent avec adjust_balance() côté service."""
+        if field.data == 0:
+            raise ValidationError("Le nombre de jours ne peut pas être égal à zéro.")

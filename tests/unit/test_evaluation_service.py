@@ -153,7 +153,10 @@ class TestLaunchCampaign:
 
         ev = _make_evaluation(status="draft")
 
-        with patch("app.services.evaluation_service.Evaluation") as mock_ev_cls:
+        # select() de SQLAlchemy valide ses arguments à l'appel ; quand
+        # Evaluation est un MagicMock, il faut patcher select aussi.
+        with patch("app.services.evaluation_service.Evaluation") as mock_ev_cls, \
+             patch("app.services.evaluation_service.select"):
             mock_ev_cls.STATUS_DRAFT = "draft"
             mock_ev_cls.return_value = ev
             result = launch_campaign_for_employees(1, [(1, 2), (3, 4)])
@@ -234,7 +237,10 @@ class TestCreateEvaluation:
         mock_db.session.execute.return_value.scalar_one_or_none.return_value = None
 
         ev = _make_evaluation(status="draft")
-        with patch("app.services.evaluation_service.Evaluation") as mock_ev_cls:
+        # select() de SQLAlchemy valide ses arguments à l'appel ; quand
+        # Evaluation est un MagicMock, il faut patcher select aussi.
+        with patch("app.services.evaluation_service.Evaluation") as mock_ev_cls, \
+             patch("app.services.evaluation_service.select"):
             mock_ev_cls.STATUS_DRAFT = "draft"
             mock_ev_cls.return_value = ev
             result = create_evaluation({"campaign_id": 1, "employee_id": 1, "evaluator_id": 2})

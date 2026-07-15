@@ -63,19 +63,16 @@ def create_app(env: Optional[str] = None) -> Flask:
     # ── 5. Enregistrement des Blueprints ─────────────────────────────────────
     _register_blueprints(app)
 
-    # ── 6. Enregistrement de l'API REST ──────────────────────────────────────
-    _register_api(app)
-
-    # ── 7. Gestionnaires d'erreurs ────────────────────────────────────────────
+    # ── 6. Gestionnaires d'erreurs ────────────────────────────────────────────
     _register_error_handlers(app)
 
-    # ── 8. Filtres et fonctions Jinja2 ────────────────────────────────────────
+    # ── 7. Filtres et fonctions Jinja2 ────────────────────────────────────────
     _register_template_filters(app)
 
-    # ── 9. Configuration du logging ───────────────────────────────────────────
+    # ── 8. Configuration du logging ───────────────────────────────────────────
     _configure_logging(app)
 
-    # ── 10. Hooks de requête ──────────────────────────────────────────────────
+    # ── 9. Hooks de requête ───────────────────────────────────────────────────
     _register_request_hooks(app)
 
     app.logger.info(
@@ -166,7 +163,6 @@ def _init_extensions(app: Flask) -> None:
 
     # ── Autres extensions ─────────────────────────────────────────────────────
     csrf.init_app(app)
-    csrf.exempt("app.api")
     mail.init_app(app)
     cache.init_app(app)
     limiter.init_app(app)
@@ -227,12 +223,6 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(admin_bp,       url_prefix="/admin")
 
 
-def _register_api(app: Flask) -> None:
-    """Enregistre le Blueprint de l'API REST v1."""
-    from .api.v1 import bp as api_v1_bp
-    app.register_blueprint(api_v1_bp, url_prefix="/api/v1")
-
-
 def _register_error_handlers(app: Flask) -> None:
     """Gestionnaires d'erreurs HTTP centralisés."""
     from .utils.error_handlers import (
@@ -263,11 +253,20 @@ def _configure_logging(app: Flask) -> None:
 def _register_request_hooks(app: Flask) -> None:
     """
     Before/after request hooks globaux :
-    - Injection de l'utilisateur courant dans g
-    - En-têtes de sécurité sur chaque réponse
+    - Génération d'un nonce CSP unique par requête, exposé aux templates
+    - En-têtes de sécurité sur chaque réponse (utilise ce même nonce)
     """
-    from .utils.security_headers import add_security_headers
+    from flask import g
+    from .utils.security_headers import add_security_headers, generate_nonce
+
+    @app.before_request
+    def set_csp_nonce():
+        g.csp_nonce = generate_nonce()
+
+    @app.context_processor
+    def inject_csp_nonce():
+        return {"csp_nonce": g.get("csp_nonce", "")}
 
     @app.after_request
     def apply_security_headers(response):
-        return add_security_headers(response)
+        return add_security_headers(response, g.get("csp_nonce", ""))

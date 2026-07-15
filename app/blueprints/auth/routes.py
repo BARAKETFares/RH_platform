@@ -52,7 +52,6 @@ from app.extensions import limiter
 from app.models.user import PasswordResetToken, User
 from app.services.auth_service import (
     authenticate,
-    authenticate_2fa,
     change_password,
     confirm_password_reset,
     logout,
@@ -64,12 +63,9 @@ from . import bp
 from .forms import (
     AvatarUploadForm,
     ChangePasswordForm,
-    DisableTwoFactorForm,
     LoginForm,
     PasswordResetConfirmForm,
     PasswordResetRequestForm,
-    TwoFactorForm,
-    TwoFactorSetupConfirmForm,
 )
 
 logger = logging.getLogger(__name__)
@@ -183,48 +179,23 @@ def db_get_user(user_id: int) -> User | None:
 
 @bp.get("/2fa")
 def two_factor_get():
-    """Affiche le formulaire de saisie du code TOTP."""
-    if not session.get(_SESSION_2FA_USER_ID):
-        return redirect(url_for("auth.login_get"))
-    return render_template("auth/2fa.html", form=TwoFactorForm())
+    """
+    Affiche le formulaire de saisie du code TOTP.
+    Fonctionnalité 2FA pas encore finalisée (templates manquants) — voir
+    docs/etat_du_projet.md. Neutralisée pour éviter un crash 500 si jamais
+    atteinte, plutôt qu'une implémentation partielle risquée juste avant
+    la soutenance.
+    """
+    flash("L'authentification à deux facteurs sera disponible dans une prochaine version.", "info")
+    return redirect(url_for("auth.login_get"))
 
 
 @bp.post("/2fa")
 @limiter.limit("10 per minute")
 def two_factor_post():
-    """
-    Vérifie le code TOTP et finalise la connexion.
-    Nettoie les clés de session temporaires après usage.
-    """
-    user_id = session.get(_SESSION_2FA_USER_ID)
-    if not user_id:
-        return redirect(url_for("auth.login_get"))
-
-    form = TwoFactorForm()
-    if not form.validate_on_submit():
-        return render_template("auth/2fa.html", form=form), 422
-
-    try:
-        result = authenticate_2fa(
-            user_id=user_id,
-            totp_code=form.code.data,
-            ip_address=request.remote_addr,
-            user_agent=request.user_agent.string,
-        )
-    except AuthenticationError as exc:
-        flash(str(exc), "error")
-        return render_template("auth/2fa.html", form=form), 401
-
-    remember = session.pop(_SESSION_2FA_REMEMBER, False)
-    session.pop(_SESSION_2FA_USER_ID, None)
-
-    user = db_get_user(result["user"]["id"])
-    if not user:
-        flash("Une erreur inattendue s'est produite.", "error")
-        return redirect(url_for("auth.login_get"))
-
-    login_user(user, remember=remember)
-    return redirect(_safe_next())
+    """Neutralisée — voir two_factor_get()."""
+    flash("L'authentification à deux facteurs sera disponible dans une prochaine version.", "info")
+    return redirect(url_for("auth.login_get"))
 
 
 # =============================================================================
@@ -385,54 +356,22 @@ def change_password_post():
 @bp.get("/2fa/setup")
 @login_required
 def setup_2fa_get():
-    """Génère un secret TOTP et affiche le QR code."""
-    if current_user.totp_enabled:
-        flash("Le 2FA est déjà activé sur votre compte.", "info")
-        return redirect(url_for("auth.profile_get"))
-
-    from app.services.auth_service import setup_2fa
-    totp_data = setup_2fa(current_user.id)
-    session["_totp_uri"]    = totp_data["otpauth_uri"]
-    session["_totp_secret"] = totp_data["secret"]
-
-    return render_template(
-        "auth/setup_2fa.html",
-        form=TwoFactorSetupConfirmForm(),
-        otpauth_uri=totp_data["otpauth_uri"],
-        secret=totp_data["secret"],
-    )
+    """
+    Neutralisée — les templates de la fonctionnalité 2FA (QR code, confirmation)
+    n'ont jamais été créés. Plutôt que de laisser un crash 500 sur ce bouton
+    visible depuis la page profil, on redirige avec un message honnête.
+    Voir docs/etat_du_projet.md pour le suivi de cette limite connue.
+    """
+    flash("L'authentification à deux facteurs sera disponible dans une prochaine version.", "info")
+    return redirect(url_for("auth.profile_get"))
 
 
 @bp.post("/2fa/setup")
 @login_required
 @limiter.limit("10 per minute")
 def setup_2fa_post():
-    """Confirme l'activation du 2FA avec le premier code valide."""
-    if current_user.totp_enabled:
-        return redirect(url_for("auth.profile_get"))
-
-    form = TwoFactorSetupConfirmForm()
-    if not form.validate_on_submit():
-        return render_template(
-            "auth/setup_2fa.html",
-            form=form,
-            otpauth_uri=session.get("_totp_uri", ""),
-            secret=session.get("_totp_secret", ""),
-        ), 422
-
-    from app.services.auth_service import confirm_2fa_setup
-    if not confirm_2fa_setup(current_user.id, form.code.data):
-        flash("Code invalide. Vérifiez votre application d'authentification.", "error")
-        return render_template(
-            "auth/setup_2fa.html",
-            form=form,
-            otpauth_uri=session.get("_totp_uri", ""),
-            secret=session.get("_totp_secret", ""),
-        ), 422
-
-    session.pop("_totp_uri", None)
-    session.pop("_totp_secret", None)
-    flash("Authentification à deux facteurs activée.", "success")
+    """Neutralisée — voir setup_2fa_get()."""
+    flash("L'authentification à deux facteurs sera disponible dans une prochaine version.", "info")
     return redirect(url_for("auth.profile_get"))
 
 
@@ -443,29 +382,17 @@ def setup_2fa_post():
 @bp.get("/2fa/disable")
 @login_required
 def disable_2fa_get():
-    """Affiche la confirmation de désactivation du 2FA."""
-    if not current_user.totp_enabled:
-        flash("Le 2FA n'est pas activé sur votre compte.", "info")
-        return redirect(url_for("auth.profile_get"))
-    return render_template("auth/disable_2fa.html", form=DisableTwoFactorForm())
+    """Neutralisée — voir setup_2fa_get(). Cas normalement inatteignable
+    tant que le 2FA ne peut plus être activé, gardé par sécurité."""
+    flash("L'authentification à deux facteurs sera disponible dans une prochaine version.", "info")
+    return redirect(url_for("auth.profile_get"))
 
 
 @bp.post("/2fa/disable")
 @login_required
 def disable_2fa_post():
-    """Désactive le 2FA après vérification du mot de passe."""
-    form = DisableTwoFactorForm()
-    if not form.validate_on_submit():
-        return render_template("auth/disable_2fa.html", form=form), 422
-
-    from app.services.auth_service import disable_2fa
-    try:
-        disable_2fa(current_user.id, form.password.data)
-    except AuthenticationError as exc:
-        flash(str(exc), "error")
-        return render_template("auth/disable_2fa.html", form=form), 401
-
-    flash("Authentification à deux facteurs désactivée.", "success")
+    """Neutralisée — voir setup_2fa_get()."""
+    flash("L'authentification à deux facteurs sera disponible dans une prochaine version.", "info")
     return redirect(url_for("auth.profile_get"))
 
 

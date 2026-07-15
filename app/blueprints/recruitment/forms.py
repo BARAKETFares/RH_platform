@@ -13,6 +13,7 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileAllowed, FileField
 from wtforms import (
     DateField,
     DateTimeLocalField,
@@ -257,13 +258,12 @@ class CandidateApplicationForm(FlaskForm):
         validators=[DataRequired()],
     )
 
-    cv_text = TextAreaField(
-        "CV (texte libre)",
-        validators=[OptionalValidator(), Length(max=20000)],
-        render_kw={
-            "rows": 6,
-            "placeholder": "Collez ici le CV ou une synthèse du parcours du candidat…",
-        },
+    cv_file = FileField(
+        "CV (PDF uniquement)",
+        validators=[
+            OptionalValidator(),
+            FileAllowed(["pdf"], "Seuls les fichiers PDF sont acceptés."),
+        ],
     )
 
     # ── Notes sur la candidature ──────────────────────────────────────────────

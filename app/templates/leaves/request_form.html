@@ -8,7 +8,7 @@
     <div class="card">
       <div class="card-body p-4">
 
-        <form method="POST" novalidate>
+        <form method="POST" enctype="multipart/form-data" novalidate>
           {{ form.hidden_tag() }}
 
           {# ── Type d'absence ──────────────────────────────────────── #}
@@ -64,7 +64,15 @@
             </div>
           </div>
 
-          {{ form.document_path() }}
+          {# ── Justificatif ───────────────────────────────────────── #}
+          <div class="mb-4">
+            {{ form.document_file.label(class="form-label fw-medium") }}
+            {{ form.document_file(class="form-control" + (" is-invalid" if form.document_file.errors else "")) }}
+            {% for err in form.document_file.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+            <div class="form-text">PDF, PNG ou JPG.</div>
+          </div>
 
           <div class="d-flex gap-2">
             {{ form.submit(class="btn btn-primary") }}

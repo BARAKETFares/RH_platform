@@ -58,7 +58,7 @@
               id="togglePassword"
               title="Afficher / masquer le mot de passe"
               aria-label="Afficher ou masquer le mot de passe">
-        <i class="bi bi-eye" id="eyeIcon"></i>
+        <i class="bi bi-eye text-dark" id="eyeIcon"></i>
       </button>
       {% if form.password.errors %}
         <div class="invalid-feedback">
@@ -88,14 +88,14 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
   /* Afficher / masquer le mot de passe */
   document.getElementById('togglePassword').addEventListener('click', function () {
     const input = document.getElementById('password');
     const icon  = document.getElementById('eyeIcon');
     const show  = input.type === 'password';
     input.type       = show ? 'text' : 'password';
-    icon.className   = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+    icon.className   = (show ? 'bi bi-eye-slash' : 'bi bi-eye') + ' text-dark';
     this.title       = show ? 'Masquer le mot de passe' : 'Afficher le mot de passe';
   });
 

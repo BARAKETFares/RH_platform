@@ -3,10 +3,17 @@ En-têtes de sécurité HTTP ajoutés à chaque réponse.
 
 Référence : https://owasp.org/www-project-secure-headers/
 """
+import secrets
+
 from flask import Response
 
 
-def add_security_headers(response: Response) -> Response:
+def generate_nonce() -> str:
+    """Nonce CSP aléatoire, unique par requête (16 octets, base64url)."""
+    return secrets.token_urlsafe(16)
+
+
+def add_security_headers(response: Response, nonce: str) -> Response:
     headers = {
         # Empêche l'injection de contenu MIME
         "X-Content-Type-Options": "nosniff",
@@ -20,10 +27,11 @@ def add_security_headers(response: Response) -> Response:
         "Referrer-Policy": "strict-origin-when-cross-origin",
         # Permissions browser API
         "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
-        # Content Security Policy
+        # Content Security Policy — nonce généré une fois par requête (before_request)
+        # et injecté ici ET dans les templates via {{ csp_nonce }} (context processor).
         "Content-Security-Policy": (
             "default-src 'self'; "
-            "script-src 'self' 'nonce-{nonce}' cdn.jsdelivr.net cdnjs.cloudflare.com; "
+            f"script-src 'self' 'nonce-{nonce}' cdn.jsdelivr.net cdnjs.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com; "
             "font-src 'self' cdn.jsdelivr.net fonts.gstatic.com; "
             "img-src 'self' data: blob:; "

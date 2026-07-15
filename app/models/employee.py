@@ -255,13 +255,11 @@ class Employee(db.Model):
     )
 
     # Définies dans leurs modules respectifs (back_populates="employee") :
-    #   contracts          → app/models/employee_contract.py (ou contract.py)
-    #   documents           → app/models/document.py
-    #   employee_skills     → app/models/skill.py
-    #   leave_balances      → app/models/leave.py
-    #   leave_requests      → app/models/leave.py
-    #   evaluations         → app/models/evaluation.py (evaluator_id + employee_id)
-    #   objectives          → app/models/objective.py
+    #   contracts          → app/models/contract.py
+    #   leave_balances     → app/models/leave_balance.py
+    #   leave_requests     → app/models/leave_request.py
+    #   evaluations        → app/models/evaluation.py (evaluator_id + employee_id)
+    #   objectives         → app/models/objective.py
 
     # ── Validation SQLAlchemy ─────────────────────────────────────────────────
     @validates("first_name", "last_name")

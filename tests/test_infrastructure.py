@@ -175,3 +175,37 @@ class TestFactories:
             emp = EmployeeFactory(org=seed_org, status="probation")
             assert emp.status == "probation"
             assert emp.company_id == seed_org["company_id"]
+
+
+# =============================================================================
+# TestCspNonce — régression du bug nonce CSP jamais substitué (15/07/2026)
+# =============================================================================
+
+class TestCspNonce:
+    """
+    Bug réel trouvé par test navigateur (Playwright) : la CSP contenait la
+    chaîne littérale 'nonce-{nonce}' (jamais substituée), ce qui bloquait
+    tout <script> inline — dont le graphique Chart.js du dashboard, qui
+    s'affichait comme un carré vide dans le vrai navigateur (pytest seul
+    ne l'aurait jamais détecté, car il ne vérifie pas le rendu visuel).
+    """
+
+    def test_csp_header_has_no_literal_placeholder(self, client):
+        resp = client.get("/auth/login")
+        csp = resp.headers.get("Content-Security-Policy", "")
+        assert "{nonce}" not in csp, (
+            "La CSP contient encore le placeholder littéral jamais substitué"
+        )
+
+    def test_csp_header_has_a_real_nonce(self, client):
+        resp = client.get("/auth/login")
+        csp = resp.headers.get("Content-Security-Policy", "")
+        assert "'nonce-" in csp and "'nonce-{nonce}'" not in csp, (
+            f"La CSP devrait contenir un vrai nonce généré, obtenu : {csp}"
+        )
+
+    def test_two_requests_get_different_nonces(self, client):
+        """Le nonce doit être régénéré à chaque requête, pas figé une fois pour toutes."""
+        csp1 = client.get("/auth/login").headers.get("Content-Security-Policy", "")
+        csp2 = client.get("/auth/login").headers.get("Content-Security-Policy", "")
+        assert csp1 != csp2, "Deux requêtes différentes ne devraient pas partager le même nonce"

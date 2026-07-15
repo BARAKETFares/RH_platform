@@ -144,16 +144,6 @@
           </li>
           {% endif %}
 
-          {# Reporting — admin, rh #}
-          {% if role in ['admin', 'rh'] %}
-          <li class="nav-item">
-            <a href="{{ url_for('reporting.dashboard') }}"
-               class="nav-link {{ 'active fw-medium' if request.blueprint == 'reporting' else 'text-dark' }}">
-              <i class="bi bi-bar-chart me-2"></i>Reporting
-            </a>
-          </li>
-          {% endif %}
-
           {# ── Organisation — admin + rh ────────────────────────────────── #}
           {% if role in ['admin', 'rh'] %}
           <li class="nav-item mt-3">

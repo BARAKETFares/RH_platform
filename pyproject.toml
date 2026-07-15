@@ -13,7 +13,7 @@ exclude = ["migrations/", "venv/", ".venv/"]
 [tool.black]
 line-length = 100
 target-version = ["py311"]
-exclude = "/migrations|/venv|/\.venv"
+exclude = '/migrations|/venv|/\.venv'
 
 [tool.pytest.ini_options]
 testpaths        = ["tests"]
@@ -21,3 +21,14 @@ python_files     = ["test_*.py"]
 python_classes   = ["Test*"]
 python_functions = ["test_*"]
 addopts          = "-v --tb=short"
+
+[tool.coverage.run]
+# Mesure uniquement le code applicatif (lancé via `pytest --cov=app tests/`).
+source = ["app"]
+branch = true
+# Exclut du calcul : migrations Alembic, scripts utilitaires et les tests eux-mêmes.
+omit = [
+    "*/migrations/*",
+    "*/scripts/*",
+    "*/tests/*",
+]

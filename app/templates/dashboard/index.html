@@ -128,7 +128,7 @@
 
 {% block extra_js %}
 {% if show_company_kpis and status_breakdown and status_breakdown|length > 0 %}
-<script>
+<script nonce="{{ csp_nonce }}">
   const statusLabels = {
     active: 'Actif', on_leave: 'En congé', probation: 'Période d\'essai',
     suspended: 'Suspendu', terminated: 'Parti',

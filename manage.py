@@ -94,6 +94,7 @@ def seed_init():
         ("leaves.read",           "leaves",      "read",    "Voir les demandes d'absence"),
         ("leaves.write",          "leaves",      "write",   "Soumettre une demande d'absence"),
         ("leaves.approve",        "leaves",      "approve", "Approuver / rejeter une demande d'absence"),
+        ("leaves.adjust",         "leaves",      "adjust",  "Ajuster manuellement un solde de congés"),
         ("performance.read",      "performance", "read",    "Voir les évaluations et objectifs"),
         ("performance.write",     "performance", "write",   "Créer / modifier des évaluations"),
         ("performance.finalize",  "performance", "finalize","Finaliser une évaluation"),
@@ -151,7 +152,7 @@ def seed_init():
             "Gestion RH complète hors administration technique.",
             [
                 "employees.read", "employees.write", "employees.delete",
-                "leaves.read", "leaves.write", "leaves.approve",
+                "leaves.read", "leaves.write", "leaves.approve", "leaves.adjust",
                 "performance.read", "performance.write", "performance.finalize",
                 "payroll.read",
                 "contracts.read", "contracts.write",

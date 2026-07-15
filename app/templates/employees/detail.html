@@ -8,6 +8,9 @@
   <a href="{{ url_for('employees.edit_employee', employee_id=employee.id) }}" class="btn btn-outline-primary">
     <i class="bi bi-pencil me-1"></i>Modifier
   </a>
+  <a href="{{ url_for('leaves.adjust_balance_route', employee_id=employee.id) }}" class="btn btn-outline-secondary">
+    <i class="bi bi-piggy-bank me-1"></i>Solde de congés
+  </a>
   {% if not employee.is_terminated %}
   <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#terminateModal">
     <i class="bi bi-person-x me-1"></i>Marquer le départ

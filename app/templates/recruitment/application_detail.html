@@ -215,20 +215,18 @@
     {% endif %}
 
     {# CV du candidat #}
-    {% if application.candidate.cv_text %}
+    {% if application.candidate.cv_path %}
     <div class="card mb-3">
-      <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-file-earmark-text me-2"></i>CV</span>
-        <button class="btn btn-sm btn-outline-secondary"
-                data-bs-toggle="collapse"
-                data-bs-target="#cvCollapse">
-          Afficher / Masquer
-        </button>
-      </div>
-      <div class="collapse" id="cvCollapse">
-        <div class="card-body small" style="white-space: pre-wrap; max-height: 400px; overflow-y: auto;">
-          {{ application.candidate.cv_text }}
+      <div class="card-body py-3 d-flex align-items-center gap-3">
+        <i class="bi bi-file-earmark-pdf fs-2 text-danger"></i>
+        <div class="flex-grow-1">
+          <div class="fw-semibold small">CV joint</div>
+          <div class="text-muted small">Fichier PDF disponible</div>
         </div>
+        <a href="{{ url_for('recruitment.download_cv', candidate_id=application.candidate.id) }}"
+           class="btn btn-sm btn-outline-danger">
+          <i class="bi bi-download me-1"></i>Télécharger
+        </a>
       </div>
     </div>
     {% endif %}
@@ -303,7 +301,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 document.getElementById('decisionStatus') && document.getElementById('decisionStatus')
   .addEventListener('change', function() {
     var block = document.getElementById('rejectionReasonBlock');

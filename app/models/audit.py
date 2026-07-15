@@ -73,7 +73,7 @@ class AuditLog(db.Model):
         Index("ix_audit_logs_user_id", "user_id"),
         Index("ix_audit_logs_action", "action"),
         Index("ix_audit_logs_entity", "entity_type", "entity_id"),
-        Index("ix_audit_logs_created_at", "created_at"),
+        # ix_audit_logs_created_at est créé via index=True sur la colonne (ligne ~145)
         Index("ix_audit_logs_session_id", "session_id"),
     )
 

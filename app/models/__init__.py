@@ -65,13 +65,6 @@ from .recruitment import JobPosting, Candidate, Application, Interview  # noqa: 
 from .audit import AuditLog  # noqa: F401
 from .notification import Notification  # noqa: F401
 
-# Modules à venir (décommenter au fur et à mesure de leur création) :
-# from .contract     import ContractType, Contract
-# from .document     import EmployeeDocument
-# from .skill        import Skill, EmployeeSkill
-# from .evaluation   import EvaluationCampaign, Evaluation, EvaluationItem
-# from .objective    import Objective
-
 __all__ = [
     "Role", "Permission", "RolePermission",
     "User", "UserSession", "PasswordResetToken",

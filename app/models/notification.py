@@ -86,7 +86,7 @@ class Notification(db.Model):
         Index("ix_notifications_recipient_id", "recipient_id"),
         Index("ix_notifications_recipient_status", "recipient_id", "status"),
         Index("ix_notifications_entity", "entity_type", "entity_id"),
-        Index("ix_notifications_created_at", "created_at"),
+        # ix_notifications_created_at est créé via index=True sur la colonne (ligne ~149)
     )
 
     # ── Canaux (constantes) ───────────────────────────────────────────────────

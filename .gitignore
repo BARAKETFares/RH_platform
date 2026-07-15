@@ -55,3 +55,9 @@ coverage.xml
 
 # ── Docker ────────────────────────────────────────────────────────────────
 docker-compose.override.yml
+
+# ── Exclus du dépôt public à la demande de l'auteur ────────────────────────
+docs/
+graphify-out/
+.claude/
+CLAUDE.md

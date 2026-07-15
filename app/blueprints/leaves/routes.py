@@ -26,14 +26,17 @@ from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.extensions import db
+from app.models.employee import Employee
 from app.models.leave_request import LeaveRequest
 from app.services.leave_service import (
+    adjust_balance,
     approve_leave,
     calculate_all_balances,
     create_leave_request,
     reject_leave,
 )
-from app.utils.decorators import require_role
+from app.utils.decorators import require_permission, require_role
+from app.utils.file_utils import save_upload
 from app.utils.exceptions import (
     BusinessRuleError,
     ConflictError,
@@ -42,7 +45,7 @@ from app.utils.exceptions import (
 )
 from app.utils.pagination import paginate
 from . import bp
-from .forms import LeaveCancelForm, LeaveDecisionForm, LeaveRequestForm
+from .forms import LeaveBalanceAdjustForm, LeaveCancelForm, LeaveDecisionForm, LeaveRequestForm
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +155,14 @@ def new_request():
     form.populate_leave_types(company_id)
 
     if form.validate_on_submit():
+        document_path = None
+        if form.document_file.data:
+            try:
+                document_path = save_upload(form.document_file.data, "leave_documents")
+            except ValueError as exc:
+                flash(str(exc), "error")
+                return render_template("leaves/request_form.html", form=form)
+
         payload = {
             "employee_id": employee_id,
             "leave_type_id": form.leave_type_id.data,
@@ -160,7 +171,7 @@ def new_request():
             "start_half_day": form.start_half_day.data,
             "end_half_day": form.end_half_day.data,
             "employee_comment": form.employee_comment.data,
-            "document_path": form.document_path.data or None,
+            "document_path": document_path,
             "is_emergency": form.is_emergency.data,
         }
 
@@ -379,6 +390,56 @@ def decide(leave_id: int):
         flash(str(exc), "error")
 
     return redirect(url_for("leaves.detail", leave_id=leave_id))
+
+
+# =============================================================================
+# GET/POST /leaves/employee/<employee_id>/balance — régularisation RH/Admin
+# =============================================================================
+
+@bp.route("/employee/<int:employee_id>/balance", methods=["GET", "POST"])
+@login_required
+@require_permission("leaves.adjust")
+def adjust_balance_route(employee_id: int):
+    """
+    Affiche les soldes de congés d'un employé (année en cours) et permet
+    à RH/Admin d'appliquer une régularisation manuelle via adjust_balance().
+    """
+    employee = db.session.get(Employee, employee_id)
+    if employee is None:
+        abort(404, description="Employé introuvable.")
+
+    year = _current_year()
+
+    form = LeaveBalanceAdjustForm()
+    form.populate_leave_types(employee.company_id)
+
+    if form.validate_on_submit():
+        try:
+            adjust_balance(
+                employee_id=employee_id,
+                leave_type_id=form.leave_type_id.data,
+                year=year,
+                days=float(form.days.data),
+                reason=form.reason.data,
+                adjusted_by_id=current_user.id,
+            )
+        except NotFoundError as exc:
+            flash(str(exc), "error")
+        except ValidationError as exc:
+            flash(str(exc), "error")
+        else:
+            flash(f"Solde ajusté avec succès pour {employee.full_name}.", "success")
+            return redirect(url_for("leaves.adjust_balance_route", employee_id=employee_id))
+
+    balances = calculate_all_balances(employee_id, year)
+
+    return render_template(
+        "leaves/adjust_balance.html",
+        employee=employee,
+        balances=balances,
+        form=form,
+        year=year,
+    )
 
 
 # =============================================================================

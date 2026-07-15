@@ -65,28 +65,44 @@ def db(app):
     Gère le cycle de vie de la base de données de test.
 
     Séquence :
-      1. create_all()                  — crée toutes les tables
-      2. _seed_roles_and_permissions() — insère les 4 rôles système
-      3. yield _db                     — tests s'exécutent
-      4. drop_all()                    — nettoie tout
+      1. Repart d'un schéma vierge (DROP/CREATE SCHEMA)
+      2. create_all()                  — crée toutes les tables
+      3. _seed_roles_and_permissions() — insère les 4 rôles système
+      4. yield _db                     — tests s'exécutent
+      5. Libère le pool puis DROP SCHEMA — nettoie tout
+
+    Note : les clients de test (function-scoped) laissent des connexions
+    'idle in transaction' dans le pool SQLAlchemy. Elles verrouillent les
+    tables et bloqueraient DROP SCHEMA CASCADE. On dispose donc le pool
+    (engine.dispose) avant chaque DROP, et on neutralise par sécurité toute
+    connexion fantôme laissée par un run précédemment interrompu.
     """
-    with app.app_context():
-        # Repart d'une ardoise vierge : DROP SCHEMA CASCADE gère les FK circulaires
-        # que drop_all() ne résoudrait pas proprement sur PostgreSQL.
-        from sqlalchemy import text
+    from sqlalchemy import text
+
+    def _reset_public_schema() -> None:
+        # Ferme la session courante et vide le pool : aucune connexion ne
+        # détient plus de verrou sur les tables → DROP SCHEMA ne bloque pas.
+        _db.session.remove()
+        _db.engine.dispose()
         with _db.engine.connect() as conn:
+            # Filet de sécurité : tue toute connexion fantôme d'un run tué.
+            conn.execute(text("""
+                SELECT pg_terminate_backend(pid)
+                FROM pg_stat_activity
+                WHERE datname = current_database()
+                  AND pid != pg_backend_pid()
+                  AND state = 'idle in transaction'
+            """))
             conn.execute(text("DROP SCHEMA public CASCADE"))
             conn.execute(text("CREATE SCHEMA public"))
             conn.commit()
+
+    with app.app_context():
+        _reset_public_schema()
         _db.create_all()
         _seed_roles_and_permissions()
         yield _db
-        # DROP CASCADE gère les FK circulaires (Employee.manager_id, etc.)
-        from sqlalchemy import text as _text
-        with _db.engine.connect() as _conn:
-            _conn.execute(_text("DROP SCHEMA public CASCADE"))
-            _conn.execute(_text("CREATE SCHEMA public"))
-            _conn.commit()
+        _reset_public_schema()
 
 
 @pytest.fixture(scope="session")
@@ -241,36 +257,36 @@ def _login(c, email: str, password: str) -> None:
 def admin_client(app, seed_users):
     """Client de test connecté en tant qu'admin."""
     creds = seed_users["admin"]
-    with app.test_client() as c:
-        _login(c, creds["email"], creds["password"])
-        yield c
+    c = app.test_client()
+    _login(c, creds["email"], creds["password"])
+    yield c
 
 
 @pytest.fixture(scope="function")
 def rh_client(app, seed_users):
     """Client de test connecté en tant que RH."""
     creds = seed_users["rh"]
-    with app.test_client() as c:
-        _login(c, creds["email"], creds["password"])
-        yield c
+    c = app.test_client()
+    _login(c, creds["email"], creds["password"])
+    yield c
 
 
 @pytest.fixture(scope="function")
 def manager_client(app, seed_users):
     """Client de test connecté en tant que manager."""
     creds = seed_users["manager"]
-    with app.test_client() as c:
-        _login(c, creds["email"], creds["password"])
-        yield c
+    c = app.test_client()
+    _login(c, creds["email"], creds["password"])
+    yield c
 
 
 @pytest.fixture(scope="function")
 def employee_client(app, seed_users):
     """Client de test connecté en tant qu'employé."""
     creds = seed_users["employee"]
-    with app.test_client() as c:
-        _login(c, creds["email"], creds["password"])
-        yield c
+    c = app.test_client()
+    _login(c, creds["email"], creds["password"])
+    yield c
 
 
 # =============================================================================
@@ -294,6 +310,7 @@ def _seed_roles_and_permissions() -> None:
         ("leaves.read",          "leaves",      "read",     "Voir les demandes d'absence"),
         ("leaves.write",         "leaves",      "write",    "Soumettre une demande d'absence"),
         ("leaves.approve",       "leaves",      "approve",  "Approuver / rejeter une demande"),
+        ("leaves.adjust",        "leaves",      "adjust",   "Ajuster manuellement un solde de congés"),
         ("performance.read",     "performance", "read",     "Voir les évaluations"),
         ("performance.write",    "performance", "write",    "Créer / modifier des évaluations"),
         ("performance.finalize", "performance", "finalize", "Finaliser une évaluation"),
@@ -338,7 +355,7 @@ def _seed_roles_and_permissions() -> None:
             Role.RH, "Ressources Humaines", "Gestion RH complète.",
             [
                 "employees.read", "employees.write", "employees.delete",
-                "leaves.read", "leaves.write", "leaves.approve",
+                "leaves.read", "leaves.write", "leaves.approve", "leaves.adjust",
                 "performance.read", "performance.write", "performance.finalize",
                 "payroll.read",
                 "contracts.read", "contracts.write",

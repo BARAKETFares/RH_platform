@@ -320,7 +320,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 // Afficher le bloc motif de refus quand "refusee" est sélectionné
 document.querySelectorAll('.modal select[name="status"]').forEach(function(sel) {
   var modalId = sel.closest('.modal').id;

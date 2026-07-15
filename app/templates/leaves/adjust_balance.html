@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Solde de congés — {{ employee.full_name }}{% endblock %}
+{% block page_title %}Solde de congés — {{ employee.full_name }}{% endblock %}
+
+{% block content %}
+
+{# ── Soldes actuels ({{ year }}) ────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  {% for balance in balances %}
+  <div class="col-md-3 col-sm-6">
+    <div class="card kpi-card h-100" style="border-left: 4px solid {{ balance.leave_type.color_hex }};">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">
+          {{ balance.leave_type.code }}
+        </div>
+        <div class="kpi-value">{{ balance.available | days_label }}</div>
+        <div class="text-muted small">
+          disponible{{ 's' if balance.available > 1 else '' }} sur {{ balance.total_acquired | days_label }}
+        </div>
+        {% if balance.pending > 0 %}
+        <div class="text-warning small mt-1">
+          <i class="bi bi-hourglass-split me-1"></i>{{ balance.pending | days_label }} en attente
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <div class="alert alert-light border mb-0">
+      <i class="bi bi-info-circle me-2"></i>Aucun solde de congés pour {{ year }}.
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ── Formulaire de régularisation ───────────────────────────────────── #}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body p-4">
+        <h5 class="card-title mb-3">Régularisation manuelle</h5>
+        <p class="text-muted small">
+          Réservé RH/Admin — le motif est obligatoire et tracé pour l'audit.
+        </p>
+
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ form.leave_type_id.label(class="form-label fw-medium") }}
+            {{ form.leave_type_id(class="form-select" + (" is-invalid" if form.leave_type_id.errors else "")) }}
+            {% for err in form.leave_type_id.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ form.days.label(class="form-label fw-medium") }}
+            {{ form.days(class="form-control" + (" is-invalid" if form.days.errors else ""), step="0.5") }}
+            {% for err in form.days.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-4">
+            {{ form.reason.label(class="form-label fw-medium") }}
+            {{ form.reason(class="form-control" + (" is-invalid" if form.reason.errors else "")) }}
+            {% for err in form.reason.errors %}
+              <div class="invalid-feedback">{{ err }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('employees.detail', employee_id=employee.id) }}" class="btn btn-outline-secondary">Retour à la fiche</a>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

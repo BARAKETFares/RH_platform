@@ -31,7 +31,7 @@
       </div>
     </div>
 
-    <form method="POST" novalidate>
+    <form method="POST" enctype="multipart/form-data" novalidate>
       {{ form.hidden_tag() }}
 
       {# ── Identité du candidat ──────────────────────────────────────── #}
@@ -92,16 +92,20 @@
       {# ── CV & Notes ────────────────────────────────────────────────── #}
       <div class="card mb-4">
         <div class="card-header fw-semibold">
-          <i class="bi bi-file-text me-2"></i>CV & Observations
+          <i class="bi bi-file-earmark-pdf me-2"></i>CV & Observations
         </div>
         <div class="card-body">
 
           <div class="mb-3">
-            {{ form.cv_text.label(class="form-label fw-medium") }}
-            {{ form.cv_text(class="form-control" + (" is-invalid" if form.cv_text.errors else "")) }}
-            {% for err in form.cv_text.errors %}
+            {{ form.cv_file.label(class="form-label fw-medium") }}
+            {{ form.cv_file(class="form-control" + (" is-invalid" if form.cv_file.errors else ""),
+                            accept=".pdf") }}
+            {% for err in form.cv_file.errors %}
               <div class="invalid-feedback">{{ err }}</div>
             {% endfor %}
+            <div class="form-text text-muted">
+              <i class="bi bi-info-circle me-1"></i>Fichier PDF uniquement · 10 Mo max · Optionnel
+            </div>
           </div>
 
           <div class="mb-0">

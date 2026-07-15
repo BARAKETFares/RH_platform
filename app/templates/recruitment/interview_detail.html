@@ -252,7 +252,7 @@
 
 {% block extra_js %}
 {% if interview.is_completed and role_name in ['admin', 'rh'] %}
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function () {
   var ta = document.getElementById('editNotesField');
   if (ta) ta.value = {{ interview.notes | tojson if interview.notes else '""' }};

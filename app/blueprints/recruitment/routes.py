@@ -21,10 +21,14 @@ Accès :
 from __future__ import annotations
 
 import logging
+import os
+import uuid
 from datetime import date
+from pathlib import Path
 
-from flask import abort, flash, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, redirect, render_template, request, send_from_directory, url_for
 from flask_login import current_user, login_required
+from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models.employee import Employee
@@ -324,6 +328,17 @@ def add_application(posting_id: int):
     if form.validate_on_submit():
         email = form.email.data.strip().lower()
 
+        # Sauvegarde du fichier CV si fourni
+        cv_path: str | None = None
+        cv_file = form.cv_file.data
+        if cv_file and cv_file.filename:
+            upload_dir = Path(current_app.config["UPLOAD_FOLDER"]) / "cvs"
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            safe_name = secure_filename(cv_file.filename)
+            filename = f"{uuid.uuid4().hex}_{safe_name}"
+            cv_file.save(upload_dir / filename)
+            cv_path = str(Path("cvs") / filename)
+
         # Trouver ou créer le candidat
         from app.models.recruitment import Candidate
         candidate = Candidate.find_by_email(email)
@@ -335,7 +350,7 @@ def add_application(posting_id: int):
                     "email":      email,
                     "phone":      form.phone.data or None,
                     "source":     form.source.data,
-                    "cv_text":    form.cv_text.data or None,
+                    "cv_path":    cv_path,
                     "notes":      form.notes.data or None,
                 })
             except (ValidationError, ConflictError) as exc:
@@ -370,6 +385,29 @@ def add_application(posting_id: int):
 
     return render_template("recruitment/application_form.html",
                            posting=posting, form=form)
+
+
+# =============================================================================
+# Téléchargement du CV
+# =============================================================================
+
+@bp.get("/candidates/<int:candidate_id>/cv")
+@login_required
+@require_role("admin", "rh", "manager")
+def download_cv(candidate_id: int):
+    """Envoie le fichier CV PDF du candidat en téléchargement."""
+    from app.models.recruitment import Candidate
+    candidate = Candidate.get_or_404(candidate_id)
+    if not candidate.cv_path:
+        abort(404, description="Aucun CV disponible pour ce candidat.")
+    upload_dir = Path(current_app.config["UPLOAD_FOLDER"])
+    cv_full = upload_dir / candidate.cv_path
+    return send_from_directory(
+        cv_full.parent,
+        cv_full.name,
+        as_attachment=True,
+        download_name=f"CV_{candidate.last_name}_{candidate.first_name}.pdf",
+    )
 
 
 # =============================================================================
